@@ -1,0 +1,23 @@
+{
+    "name": "libpax",
+    "version":"0.1.0",
+    "keywords": "libpax",
+    "description": "todo",
+    "repository":
+    {
+      "type": "git",
+      "url": "http://git.r0k.de/p.yang/wifi-counter-espidf.git"
+    },
+    "authors":
+    [
+      {"name":"Grey Rook",
+        "email":"m.solinski@greyrook.com"
+      }
+    ],
+    "frameworks": ["espidf", "arduino"],
+    "platforms": "espressif32",
+    "build": {
+      "includeDir": "lib/libpax",
+      "srcDir": "lib/libpax"
+    }
+  }

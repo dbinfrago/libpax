@@ -1,0 +1,8 @@
+build
+.vscode/settings.json
+README.md
+sdkconfig.old
+size
+.vscode
+test/build
+build
