@@ -36,7 +36,7 @@ void report(TimerHandle_t xTimer) {
     libpax_counter_reset();
 }
 
-void libpax_store_config(char* store_addr, struct libpax_config_t* configuration) {
+void libpax_serialize_config(char* store_addr, struct libpax_config_t* configuration) {
     struct libpax_config_storage_t storage_buffer;
     storage_buffer.major_version = CONFIG_MAJOR_VERSION;
     storage_buffer.minor_version = CONFIG_MINOR_VERSION;
@@ -45,7 +45,7 @@ void libpax_store_config(char* store_addr, struct libpax_config_t* configuration
     memcpy(store_addr, &storage_buffer, sizeof(struct libpax_config_storage_t));
 }
 
-int libpax_load_config(char* source, struct libpax_config_t* configuration) {
+int libpax_deserialize_config(char* source, struct libpax_config_t* configuration) {
     struct libpax_config_storage_t storage_buffer;
     memcpy(&storage_buffer, source, sizeof(struct libpax_config_storage_t));
     if (storage_buffer.major_version != CONFIG_MAJOR_VERSION) {

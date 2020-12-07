@@ -1,6 +1,7 @@
 #ifndef _LIBPAX_H
 #define _LIBPAX_H
 
+#include "libpax_api.h"
 
 #ifdef LIBPAX_ESPIDF
 // #include "esp_partition.h"
@@ -22,6 +23,25 @@
 // #define PARTITION_API_TEST 1
 // #define SPI_MAIN 1
 // #define WATCHDOG_TEST 1
+
+#define CONFIG_MAJOR_VERSION 0
+#define CONFIG_MINOR_VERSION 1
+
+/*
+ Memory payload structure for persiting configurations
+*/ 
+struct libpax_config_storage_t {
+    uint8_t major_version;
+    uint8_t minor_version;
+    // ensure we start 32bit aligned with the actual config
+    uint8_t reserved_start[2];
+    struct libpax_config_t config;
+    // Added for structure alignment
+    uint8_t pad;
+     // reserved for future use
+    uint8_t reserved_end[32];             
+    uint8_t checksum[4]; 
+};
 
 
 enum snifftype_t { MAC_SNIFF_WIFI, MAC_SNIFF_BLE, MAC_SNIFF_BLE_ENS };

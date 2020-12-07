@@ -11,10 +11,6 @@
 #define LIBPAX_MAX_SIZE 15000
 #endif
 
-
-#define CONFIG_MAJOR_VERSION 0
-#define CONFIG_MINOR_VERSION 1
-
 #define WIFI_CHANNEL_ALL    0b1111111111111
 #define WIFI_CHANNEL_1      0b0000000000001
 #define WIFI_CHANNEL_2      0b0000000000010
@@ -83,30 +79,23 @@ int libpax_counter_stop();
 int libpax_counter_count(struct count_payload_t* count);
 
 /*
- Memory payload structure for persiting configurations
-*/ 
-struct libpax_config_storage_t {
-    uint8_t major_version;                     // config version fields
-    uint8_t minor_version;
-    struct libpax_config_t config;                        // payload of struct
-    uint8_t reserved[32];                   // reserved for future use
-    uint8_t pad;                                   // Added for structure alignment
-    uint8_t checksum[4];                           // checksum of data stored
-};
+ * Size in bytes of a serialized config
+ */
+#define LIBPAX_CONFIG_SIZE 64
 
 /*
- Writes given configuration into memory at store_addr
+ * Writes given configuration into memory at store_addr
  *   @param [out] store_addr addr to write configuration payload into (should be allocated to sizeof(libpax_config_storage_t))
  *   @param configuration configuration used for writing into memory at store_addr
 */
-void libpax_store_config(char* store_addr, struct libpax_config_t* configuration);
+void libpax_serialize_config(char* store_addr, struct libpax_config_t* configuration);
 
 /*
  Writes given configuration into memory at store_addr
  *   @param source addr from which configuration payload is read (only minor version changes are allowed)
  *   @param [out] configuration configuration which was stored in memory at restore_addr
 */
-int libpax_load_config(char* source, struct libpax_config_t* configuration);
+int libpax_deserialize_config(char* source, struct libpax_config_t* configuration);
 
 /*
  Sets scanning configuration
