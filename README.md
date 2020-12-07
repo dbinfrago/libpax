@@ -36,6 +36,16 @@ LIBPAX_MAX_SIZE int [default: 15000] - Number of remembered devices, RAM usage: 
 
 The `/examples` folder contains an
 
+## Tests
+
+The library contains unit tests, which can be run via:
+
+```
+pio test -e espidf -e arduino
+```
+
+Please note: The tests are executed on an esp32 which must be connected via USB.
+
 ## Changelog
 
 Please refer to our separate [CHANGELOG.md](CHANGELOG.md) file for differences between releases.
