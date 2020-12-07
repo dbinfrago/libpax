@@ -78,9 +78,28 @@ void libpax_get_current_config(struct libpax_config_t* configuration) {
     memcpy(configuration, &current_config, sizeof(struct libpax_config_t));
 }
 
-void libpax_update_config(struct libpax_config_t* configuration) {
-    memcpy(&current_config, configuration, sizeof(struct libpax_config_t));
-    config_set = 1;
+int libpax_update_config(struct libpax_config_t* configuration) {
+    int result = 0;
+
+#ifndef LIBPAX_WIFI
+    if(configuration->wificounter) {
+        ESP_LOGE("configuration", "Configuration requests Wi-Fi but was disabled at compile time.");
+        result &= LIBPAX_ERROR_WIFI_NOT_AVAILABLE;
+    }
+#endif
+
+#ifndef LIBPAX_BLE
+    if(configuration->blecounter) {
+        ESP_LOGE("configuration", "Configuration requests BLE but was disabled at compile time.");
+        result &= LIBPAX_ERROR_BLE_NOT_AVAILABLE;
+    }
+#endif
+
+    if(result == 0) {
+        memcpy(&current_config, configuration, sizeof(struct libpax_config_t));
+        config_set = 1;
+    }
+    return result;
 }
 
 TimerHandle_t PaxReportTimer = NULL;

@@ -30,6 +30,9 @@
 #define WIFI_CHANNEL_12     0b0100000000000
 #define WIFI_CHANNEL_13     0b1000000000000
 
+#define LIBPAX_ERROR_WIFI_NOT_AVAILABLE 0b00000001
+#define LIBPAX_ERROR_BLE_NOT_AVAILABLE  0b00000010
+
 // configuration given to lib for sniffing parameters
 struct libpax_config_t {
     uint16_t wifi_channel_map;              // bit map which channel to cycle through
@@ -109,7 +112,7 @@ int libpax_load_config(char* source, struct libpax_config_t* configuration);
  Sets scanning configuration
  *   @param configuration configuration used for scanning behaviour
 */
-void libpax_update_config(struct libpax_config_t* configuration);
+int libpax_update_config(struct libpax_config_t* configuration);
 
 /*
  Returns current set configuration as out parameter
