@@ -1,7 +1,6 @@
 #ifndef _LIBPAX_H
 #define _LIBPAX_H
 
-// #define LIBPAX_ESPIDF 1
 
 #ifdef LIBPAX_ESPIDF
 // #include "esp_partition.h"
@@ -25,9 +24,7 @@
 // #define WATCHDOG_TEST 1
 
 
-#define MAC_SNIFF_WIFI 0
-#define MAC_SNIFF_BLE 1
-
+enum snifftype_t { MAC_SNIFF_WIFI, MAC_SNIFF_BLE, MAC_SNIFF_BLE_ENS };
 // #pragma once
 void wifi_sniffer_loop(void* pvParameters);
 
@@ -41,7 +38,7 @@ int libpax_ble_counter_count();
 void libpax_counter_reset();
 
 void reset_bucket();
-int mac_add(uint8_t *paddr, bool sniff_type);
+int mac_add(uint8_t *paddr, snifftype_t sniff_type);
 int add_to_bucket(uint16_t id);
 
 extern void IRAM_ATTR libpax_wifi_counter_add_mac_IRAM(uint32_t mac_input);

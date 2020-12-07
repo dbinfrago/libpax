@@ -11,8 +11,6 @@
 #define LIBPAX_MAX_SIZE 15000
 #endif
 
-#define MAC_SNIFF_WIFI 0
-#define MAC_SNIFF_BLE 1
 
 #define CONFIG_MAJOR_VERSION 0
 #define CONFIG_MINOR_VERSION 1

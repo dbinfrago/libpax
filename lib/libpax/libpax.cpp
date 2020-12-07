@@ -84,10 +84,11 @@ uint64_t macConvert(uint8_t *paddr) {
   return (__builtin_bswap64(*mac) >> 16);
 }
 
-int mac_add(uint8_t *paddr, bool sniff_type) {
+int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   // mac addresses are 6 bytes long, we only use the last two bytes
   uint16_t id = *(paddr + 4);
 
+  
   int added = add_to_bucket(id);
 
   // Count only if MAC was not yet seen
