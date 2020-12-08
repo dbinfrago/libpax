@@ -37,12 +37,12 @@ struct libpax_config_t {
     uint8_t wificounter;                    // set to 0 if you do not want to install the WiFi sniffer
     uint8_t wifi_my_country;                // e.g 0 = "EU", etc. select locale for WiFi RF settings
     uint16_t wifi_channel_switch_interval;  // [seconds/100] -> 0,5 sec.
-    int8_t wifi_rssi_threshold;                // Filter for how strong the signal should be to be counted 
+    int8_t wifi_rssi_threshold;             // Filter for how strong the signal should be to be counted
 
+    uint8_t blecounter;                     // set to 0 if you do not want to install the BLE sniffer
     uint32_t blescantime;                   // [seconds] scan duration, 0 means infinite [default]
     uint16_t blescanwindow;                 // [milliseconds] scan window, see below, 3 ... 10240, default 80ms
     uint16_t blescaninterval;               // [illiseconds] scan interval, see below, 3 ... 10240, default 80ms = 100% duty cycle
-    uint8_t blecounter;                     // set to 0 if you do not want to install the BLE sniffer
 };
 
 
