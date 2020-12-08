@@ -68,7 +68,7 @@ void libpax_default_config(struct libpax_config_t* configuration) {
     configuration->wifi_my_country = 1;
     configuration->wifi_channel_map = 0b100010100100100;
     configuration->wifi_channel_switch_interval = 50;
-    configuration->wifi_rssi_threshold = -80;
+    configuration->wifi_rssi_threshold = 0;
     configuration->blescaninterval = 0;
     configuration->blescantime = 0;
     configuration->blescanwindow = 0;
