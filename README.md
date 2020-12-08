@@ -3,6 +3,7 @@
 A library to estimate passenger (PAX) count based on Wi-Fi & Bluetooth signals based on the ESP32 chip.
 This is a library meant to be used for enabling pax-counting in other projects.
 For an application facilitating pax-counting, see [ESP32-Paxcounter](https://github.com/cyberman54/ESP32-Paxcounter).
+The library was extracted from the ESP32-Paxcounter project to enhance reusability.
 
 Current version: **0.0.1**
 

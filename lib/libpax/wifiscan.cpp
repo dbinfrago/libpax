@@ -1,4 +1,34 @@
-// Basic Config
+/*
+
+LICENSE
+
+Copyright  2020      Deutsche Bahn Station&Service AG
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+
+This file is based of the ESP32-Paxcounter:
+
+ * Copyright  2018-2020 Klaus Wilting <verkehrsrot@arcor.de>
+ * https://github.com/cyberman54/ESP32-Paxcounter
+ * https://github.com/cyberman54/ESP32-Paxcounter/commits/master/src/wifiscan.cpp
+
+Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
+
+ * Copyright 2017 Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * https://github.com/lpodkalicki/blog/tree/master/esp32/016_wifi_sniffer
+
+*/
 #include "globals.h"
 
 #include <string.h>
