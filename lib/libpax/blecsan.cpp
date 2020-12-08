@@ -236,7 +236,9 @@ esp_err_t register_ble_callback(uint16_t blescantime) {
 #endif
 
     .scan_interval = 0,
-    .scan_window = (uint16_t)(BLESCANWINDOW / 0.625) // Time = N * 0.625 msec
+    .scan_window = (uint16_t)(BLESCANWINDOW / 0.625), // Time = N * 0.625 msec
+
+    .scan_duplicate = BLE_SCAN_DUPLICATE_DISABLE // Report each packet - no de-duplication.
   };
 
   ble_scan_params.scan_interval = (uint16_t)(blescantime * 10 / 0.625); // Time = N * 0.625 msec
