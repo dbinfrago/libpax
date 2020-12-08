@@ -54,6 +54,9 @@ void test_counter_reset() {
 configuration test
 */
 void test_config_store() {
+  // ensure that the public api advertises the same size for the serialized config size
+  TEST_ASSERT_EQUAL(sizeof(struct libpax_config_storage_t), LIBPAX_CONFIG_SIZE);
+
   struct libpax_config_t configuration;
   struct libpax_config_t current_config;  
   libpax_default_config(&configuration);
@@ -63,13 +66,10 @@ void test_config_store() {
   current_config.wifi_channel_map = 0b101;
   TEST_ASSERT_NOT_EQUAL(0, memcmp(&configuration, &current_config, sizeof(struct libpax_config_t)));
   struct libpax_config_t read_configuration;
-  char* configuration_memory = (char*)malloc(sizeof(struct libpax_config_storage_t));
+  char configuration_memory[LIBPAX_CONFIG_SIZE];
   libpax_serialize_config(configuration_memory, &current_config);
   TEST_ASSERT_EQUAL(0, libpax_deserialize_config(configuration_memory, &read_configuration));
   TEST_ASSERT_EQUAL(0, memcmp(&current_config, &read_configuration, sizeof(struct libpax_config_t)));
-
-  // ensure that the public api advertises the same size for the serialized config size
-  TEST_ASSERT_EQUAL(sizeof(struct libpax_config_storage_t), LIBPAX_CONFIG_SIZE);
 }
 
 struct count_payload_t count_from_libpax;
