@@ -10,7 +10,7 @@
 #include <esp_blufi_api.h> // needed for BLE_ADDR types, do not remove
 #include <esp_coexist.h>
 
-void start_BLEscan(uint16_t blescantime);
-void stop_BLEscan(void);
+void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval);
+void stop_BLE_scan(void);
 
 #endif

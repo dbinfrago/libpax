@@ -11,7 +11,9 @@ int rssi_threshold = -80;
 
 // configData_t cfg_pax;
 
-static wifi_country_t wifi_country = {WIFI_MY_COUNTRY, WIFI_CHANNEL_MIN,
+#define WIFI_CHANNEL_MAX 13
+// default values for country configuration
+static wifi_country_t wifi_country = {"EU", 1,
                                       WIFI_CHANNEL_MAX, 100,
                                       WIFI_COUNTRY_POLICY_MANUAL};
 

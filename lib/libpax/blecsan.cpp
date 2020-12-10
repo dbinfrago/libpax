@@ -10,6 +10,7 @@
 // local Tag for logging
 static const char TAG[] = "bluetooth";
 int initialized_ble = 0;
+uint16_t used_blescantime = 0;
 
 #ifdef VERBOSE
 const char *bt_addr_t_to_string(esp_ble_addr_type_t type) {
@@ -130,7 +131,7 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
   switch (event) {
   case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
     // restart scan
-    ESP_ERROR_CHECK(esp_ble_gap_start_scanning(BLESCANTIME));
+    ESP_ERROR_CHECK(esp_ble_gap_start_scanning(used_blescantime));
     break;
 
   case ESP_GAP_BLE_SCAN_RESULT_EVT:
@@ -138,7 +139,7 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
     if (p->scan_rst.search_evt ==
         ESP_GAP_SEARCH_INQ_CMPL_EVT) // Inquiry complete, scan is done
     {                                // restart scan
-      ESP_ERROR_CHECK(esp_ble_gap_start_scanning(BLESCANTIME));
+      ESP_ERROR_CHECK(esp_ble_gap_start_scanning(used_blescantime));
       return;
     }
 
@@ -215,8 +216,11 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
   } // switch
 } // gap_callback_handler
 
-esp_err_t register_ble_callback(uint16_t blescantime) {
+esp_err_t register_ble_callback(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval) {
   ESP_LOGI(TAG, "Register GAP callback");
+
+  // set blescantime to be used in callback
+  used_blescantime = blescantime;
 
   // This function is called when gap event occurs, such as scan result.
   // register the scan callback function to the gap module
@@ -236,12 +240,14 @@ esp_err_t register_ble_callback(uint16_t blescantime) {
 #endif
 
     .scan_interval = 0,
-    .scan_window = (uint16_t)(BLESCANWINDOW / 0.625), // Time = N * 0.625 msec
+    .scan_window = 0,
 
     .scan_duplicate = BLE_SCAN_DUPLICATE_DISABLE // Report each packet - no de-duplication.
   };
 
   ble_scan_params.scan_interval = (uint16_t)(blescantime * 10 / 0.625); // Time = N * 0.625 msec
+  ble_scan_params.scan_window = (uint16_t)(blescanwindow / 0.625); // Time = N * 0.625 msec
+
   ESP_LOGI(TAG, "Set GAP scan parameters");
 
   // This function is called to set scan parameters.
@@ -251,7 +257,7 @@ esp_err_t register_ble_callback(uint16_t blescantime) {
 
 } // register_ble_callback
 
-void start_BLEscan(uint16_t blescantime) {
+void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval) {
 #ifdef LIBPAX_BLE
   ESP_LOGI(TAG, "Initializing bluetooth scanner ...");
 
@@ -272,14 +278,14 @@ void start_BLEscan(uint16_t blescantime) {
   ESP_ERROR_CHECK(esp_bluedroid_enable());
 
   // Register callback function for capturing bluetooth packets
-  ESP_ERROR_CHECK(register_ble_callback(blescantime));
+  ESP_ERROR_CHECK(register_ble_callback(blescantime, blescanwindow, blescaninterval));
 
   ESP_LOGI(TAG, "Bluetooth scanner started");
   initialized_ble = 1;
-#endif // BLECOUNTER
+#endif
 } // start_BLEscan
 
-void stop_BLEscan(void) {
+void stop_BLE_scan(void) {
 #ifdef LIBPAX_BLE
   if (initialized_ble) {
     ESP_LOGI(TAG, "Shutting down bluetooth scanner ...");
@@ -297,5 +303,5 @@ void stop_BLEscan(void) {
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }
-#endif // BLECOUNTER
+#endif
 } // stop_BLEscan

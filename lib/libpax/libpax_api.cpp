@@ -69,9 +69,9 @@ void libpax_default_config(struct libpax_config_t* configuration) {
     configuration->wifi_channel_map = 0b100010100100100;
     configuration->wifi_channel_switch_interval = 50;
     configuration->wifi_rssi_threshold = 0;
-    configuration->blescaninterval = 0;
+    configuration->blescaninterval = 80;
     configuration->blescantime = 0;
-    configuration->blescanwindow = 0;
+    configuration->blescanwindow = 80;
 }
 
 void libpax_get_current_config(struct libpax_config_t* configuration) {
@@ -133,14 +133,14 @@ int libpax_counter_start() {
         wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     }
     if(current_config.blecounter) {
-        start_BLEscan(current_config.blescantime);
+        start_BLE_scan(current_config.blescantime, current_config.blescanwindow, current_config.blescaninterval);
     }
     return 0;
 }
 
 int libpax_counter_stop() {
     wifi_sniffer_stop();
-    stop_BLEscan();
+    stop_BLE_scan();
     xTimerStop(PaxReportTimer, 0);
     return 0;
 }

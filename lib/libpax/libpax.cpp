@@ -13,9 +13,6 @@ uint16_t volatile macs_ble = 0;
 
 uint8_t volatile channel = 0;  // channel rotation counter
 
-configData_t cfg_pax;
-
-
 /** remember given id
  * returns 1 if id is new, 0 if already seen this is since last reset
  */
@@ -52,21 +49,6 @@ int add_to_bucket(uint16_t id) {
 void reset_bucket() {
   memset(seen_ids, 0, sizeof(seen_ids));
   seen_ids_count = 0;
-}
-
-
-void wifiDefaultConfig() {
-  cfg_pax.countermode =
-      COUNTERMODE;        // 0=cyclic, 1=cumulative, 2=cyclic confirmed
-  cfg_pax.rssilimit = 0;  // threshold for rssilimiter, negative value!
-  cfg_pax.wifichancycle =
-      WIFI_CHANNEL_SWITCH_INTERVAL;  // wifi channel switch cycle [seconds/100]
-  cfg_pax.blescantime =
-      BLESCANINTERVAL /
-      10;  // BT channel scan cycle [seconds/100], default 1 (= 10ms)
-  cfg_pax.blescan = BLECOUNTER;    // 0=disabled, 1=enabled
-  cfg_pax.wifiscan = WIFICOUNTER;  // 0=disabled, 1=enabled
-  cfg_pax.wifiant = 0;             // 0=internal, 1=external (for LoPy/LoPy4)
 }
 
 int libpax_wifi_counter_count() {
