@@ -21,7 +21,7 @@ This file is based of the ESP32-Paxcounter:
 
  * Copyright  2018-2020 Klaus Wilting <verkehrsrot@arcor.de>
  * https://github.com/cyberman54/ESP32-Paxcounter
- * https://github.com/cyberman54/ESP32-Paxcounter/commits/master/src/wifiscan.cpp
+ * https://github.com/cyberman54/ESP32-Paxcounter/blob/30731f5c0ce5396fdbcc0d5147481a5c69e15bff/src/wifiscan.cpp
 
 Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 

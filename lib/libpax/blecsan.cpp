@@ -1,5 +1,34 @@
-// some code snippets taken from
-// https://github.com/nkolban/esp32-snippets/tree/master/BLE/scanner
+/*
+LICENSE
+
+Copyright  2020      Deutsche Bahn Station&Service AG
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+
+This file is based of the ESP32-Paxcounter:
+
+ * Copyright  2018-2020 Oliver Brandmueller <ob@sysadm.in>
+ * Copyright  2018-2020 Klaus Wilting <verkehrsrot@arcor.de>
+ * https://github.com/cyberman54/ESP32-Paxcounter
+ * https://github.com/cyberman54/ESP32-Paxcounter/blob/30731f5c0ce5396fdbcc0d5147481a5c69e15bff/src/blecsan.cpp
+
+Which in turn is based of nkolban's esp32 snippets:
+
+  https://github.com/nkolban/esp32-snippets/tree/master/BLE/scanner
+
+*/
+ 
 
 #include "blescan.h"
 #include "libpax.h"
