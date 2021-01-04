@@ -44,7 +44,7 @@ struct libpax_config_storage_t {
 };
 
 
-enum snifftype_t { MAC_SNIFF_WIFI, MAC_SNIFF_BLE, MAC_SNIFF_BLE_ENS };
+typedef enum { MAC_SNIFF_WIFI, MAC_SNIFF_BLE, MAC_SNIFF_BLE_ENS } snifftype_t;
 // #pragma once
 void wifi_sniffer_loop(void* pvParameters);
 
