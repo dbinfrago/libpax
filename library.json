@@ -1,8 +1,8 @@
 {
     "name": "libpax",
-    "version":"0.1.0",
+    "version":"0.1.1",
     "keywords": "libpax",
-    "description": "todo",
+    "description": "Library for PAX counting using BLE and WiFi",
     "repository":
     {
       "type": "git",
@@ -10,8 +10,9 @@
     },
     "authors":
     [
-      {"name":"Grey Rook",
-        "email":"m.solinski@greyrook.com"
+      {
+        "name":"Grey Rook GmbH",
+        "email":"info@greyrook.com"
       }
     ],
     "frameworks": ["espidf", "arduino"],
