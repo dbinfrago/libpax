@@ -291,11 +291,8 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blesc
   ESP_LOGI(TAG, "Initializing bluetooth scanner ...");
 
   // Initialize BT controller to allocate task and other resource.
-  ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_BT));
-
-  
   #ifdef LIBPAX_ARDUINO
-  btStart();
+  if(btStart()) {
   #endif
   #ifdef LIBPAX_ESPIDF
   esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -311,6 +308,11 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blesc
 
   ESP_LOGI(TAG, "Bluetooth scanner started");
   initialized_ble = 1;
+  #ifdef LIBPAX_ARDUINO
+  } else {
+    ESP_LOGE(TAG, "Failed on Bluetooth scanner started");
+  }
+  #endif
 #endif
 } // start_BLEscan
 
