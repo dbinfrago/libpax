@@ -8,7 +8,7 @@
 // #define LIBPAX_BLE  // enables BLE sniffing features in build
 
 #ifndef LIBPAX_MAX_SIZE
-#define LIBPAX_MAX_SIZE 15000
+#define LIBPAX_MAX_SIZE 1000
 #endif
 
 #define WIFI_CHANNEL_ALL    0b1111111111111
