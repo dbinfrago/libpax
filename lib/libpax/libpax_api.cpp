@@ -160,6 +160,7 @@ int libpax_counter_stop() {
     wifi_sniffer_stop();
     stop_BLE_scan();
     xTimerStop(PaxReportTimer, 0);
+    PaxReportTimer = NULL;
     return 0;
 }
 
