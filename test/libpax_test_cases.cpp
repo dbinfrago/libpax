@@ -87,7 +87,7 @@ void test_callback() {
   TEST_ASSERT_EQUAL(0, err_code);
   
   printf("libpax should be running\n");
-  vTaskDelay(pdMS_TO_TICKS(1000*60 + 100));
+  vTaskDelay(pdMS_TO_TICKS(100*60 + 10));
 
   TEST_ASSERT_EQUAL(6, time_called_back);
   err_code = libpax_counter_stop();
@@ -98,7 +98,7 @@ void test_callback() {
 void test_stop(){ 
   time_called_back = 0;
   printf("libpax should be stopped\n");
-  vTaskDelay(pdMS_TO_TICKS(1000*30)); 
+  vTaskDelay(pdMS_TO_TICKS(1000)); 
   TEST_ASSERT_EQUAL(0, time_called_back);
 }
 
@@ -111,7 +111,7 @@ void test_integration() {
   libpax_default_config(&configuration);
   
   // only wificounter is active
-  configuration.blecounter = 0;
+  configuration.blecounter = 1;
   configuration.blescantime = 0; //infinit
   configuration.wificounter = 1; 
   configuration.wifi_channel_map = WIFI_CHANNEL_ALL;
@@ -120,7 +120,7 @@ void test_integration() {
   libpax_update_config(&configuration);
 
   // internal processing initialization
-  int err_code = libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1); 
+  int err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
   test_stop();
@@ -130,17 +130,9 @@ void test_integration() {
 
   libpax_get_current_config(&gotConfiguration);
   gotConfiguration.blecounter = 0;
-  gotConfiguration.wificounter = 1;
-  libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1); 
-  TEST_ASSERT_EQUAL(0, err_code);
-  test_callback();
-
-  libpax_get_current_config(&gotConfiguration);
-  gotConfiguration.blecounter = 1;
   gotConfiguration.wificounter = 0;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 
@@ -148,7 +140,31 @@ void test_integration() {
   gotConfiguration.blecounter = 0;
   gotConfiguration.wificounter = 1;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1); 
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  TEST_ASSERT_EQUAL(0, err_code);
+  test_callback();
+
+  libpax_get_current_config(&gotConfiguration);
+  gotConfiguration.blecounter = 1;
+  gotConfiguration.wificounter = 0;
+  libpax_update_config(&gotConfiguration);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1);
+  TEST_ASSERT_EQUAL(0, err_code);
+  test_callback();
+
+  libpax_get_current_config(&gotConfiguration);
+  gotConfiguration.blecounter = 0;
+  gotConfiguration.wificounter = 1;
+  libpax_update_config(&gotConfiguration);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  TEST_ASSERT_EQUAL(0, err_code);
+  test_callback();
+
+  libpax_get_current_config(&gotConfiguration);
+  gotConfiguration.blecounter = 1;
+  gotConfiguration.wificounter = 1;
+  libpax_update_config(&gotConfiguration);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 }
