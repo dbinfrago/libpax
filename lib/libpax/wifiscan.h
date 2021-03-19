@@ -2,7 +2,7 @@
 #define _WIFISCAN_H
 
 #include <esp_wifi.h>
-
+#include <esp_coexist.h>
 typedef struct {
   unsigned frame_ctrl : 16;
   unsigned duration_id : 16;
