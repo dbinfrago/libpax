@@ -150,6 +150,11 @@ int libpax_counter_start() {
         set_rssi_filter(current_config.wifi_rssi_threshold);
         wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     }
+    if(current_config.wificounter && current_config.blecounter) {
+        esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+    } else {
+        esp_wifi_set_ps(WIFI_PS_NONE);
+    }
     if(current_config.blecounter) {
         start_BLE_scan(current_config.blescantime, current_config.blescanwindow, current_config.blescaninterval);
     }

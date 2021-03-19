@@ -117,7 +117,6 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
   ESP_ERROR_CHECK(
       esp_wifi_set_storage(WIFI_STORAGE_RAM));  // we don't need NVRAM
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
-  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));  // no modem power saving
   ESP_ERROR_CHECK(
       esp_wifi_set_promiscuous_filter(&filter));  // set frame filter
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_sniffer_packet_handler));
@@ -147,7 +146,6 @@ void wifi_sniffer_stop() {
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_noop_sniffer));
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
-    esp_wifi_set_ps(WIFI_PS_NONE);    
     ESP_ERROR_CHECK(esp_wifi_stop());
     esp_wifi_deinit();
     ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_BT));
