@@ -146,12 +146,6 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
 
   esp_ble_gap_cb_param_t *p = (esp_ble_gap_cb_param_t *)param;
 
-#if (COUNT_ENS)
-  // UUID of Exposure Notification Service (ENS)
-  // https://blog.google/documents/70/Exposure_Notification_-_Bluetooth_Specification_v1.2.2.pdf
-  static const char ensMagicBytes[] = "\x16\x6f\xfd";
-#endif
-
 #ifdef VERBOSE
   ESP_LOGV(TAG, "BT payload rcvd -> type: 0x%.2x -> %s", *p->scan_rst.ble_adv,
            btsig_gap_type(*p->scan_rst.ble_adv));
@@ -195,17 +189,7 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
 
       // add this device mac to processing queue
 
-#if (COUNT_ENS)
-      // check for ens signature
-      if (cfg.enscount) {
-        if (strstr((const char *)p->scan_rst.ble_adv, ensMagicBytes) != NULL)
-          mac_add((uint8_t *)p->scan_rst.bda, MAC_SNIFF_BLE_ENS);
-        else
-          mac_add((uint8_t *)p->scan_rst.bda, MAC_SNIFF_BLE);
-      }
-#else
       mac_add((uint8_t *)p->scan_rst.bda, MAC_SNIFF_BLE);
-#endif
 
       /* to be improved in vendorfilter if:
       // you can search for elements in the payload using the
