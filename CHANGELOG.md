@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2021-03-23
+### Removed
+- Removed COUNT_ENS code which is not working at this point
+
+## [0.1.1] - 2021-03-22
+### Updated
+- Updated espressif32 platform to be at same version as in paxcounter project
+- Updated hash table size default to be smaller to use less RAM
+### Added
+- Added unittest with toggle test for wifi ble
+### Fixed
+- Fixed setting timer handle to NULL for being able to reinit the lib
+
 ## [0.0.1] - 2020-12-07
 ### Added
 - Initial version of LibPAX
