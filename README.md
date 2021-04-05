@@ -28,7 +28,7 @@ LIBPAX_WIFI
 LIBPAX_BLE
 ```
 
-The number of remembered devices is limited to 0xFFFF, requiring 0x1FFF (8 Kbytes) of RAM.
+The number of remembered devices is limited to a maximum of 65535, requiring 8 KBytes of RAM.
 
 ## Examples
 
