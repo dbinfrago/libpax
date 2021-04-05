@@ -23,7 +23,14 @@ limitations under the License.
 #include "esp_log.h"
 #include <string.h>
 
-uint16_t seen_ids [LIBPAX_MAX_SIZE];
+typedef uint32_t bitmap_t;
+enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
+#define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
+#define BIT_OFFSET(b) ((b) % BITS_PER_WORD)
+#define LIBPAX_MAX_SIZE 0xFFFF                        // enumeration of uint16_t
+#define LIBPAX_MAP_SIZE (LIBPAX_MAX_SIZE / CHAR_BIT)  // 0x1FFF
+
+bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];  //  8 KByte Bitmap to store identifiers
 int seen_ids_count = 0;
 
 uint16_t volatile macs_wifi = 0;
@@ -31,35 +38,29 @@ uint16_t volatile macs_ble = 0;
 
 uint8_t volatile channel = 0;  // channel rotation counter
 
+void set_id(bitmap_t *bitmap, uint16_t id) {
+  bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));
+}
+
+int get_id(bitmap_t *bitmap, uint16_t id) {
+  bitmap_t bit = bitmap[WORD_OFFSET(id)] & ((bitmap_t)1 << BIT_OFFSET(id));
+  return bit != 0;
+}
+
 /** remember given id
  * returns 1 if id is new, 0 if already seen this is since last reset
  */
 int add_to_bucket(uint16_t id) {
-  if(seen_ids_count == LIBPAX_MAX_SIZE) {
-    return 0;
+  if (seen_ids_count == LIBPAX_MAX_SIZE) {
+    return 0;  // fastpath if map is full
   }
 
-  int pos = id % LIBPAX_MAX_SIZE;
-  int start_pos = pos;
-  while(1) {
-    if(seen_ids[pos] == id) {
-      return 0;
-    }
-    else if(seen_ids[pos] == 0) {
-      seen_ids[pos] = id;
-      seen_ids_count++;
-      return 1;
-    } else {
-      pos = (pos + 1) % LIBPAX_MAX_SIZE;
-      if(pos == start_pos) {
-        // This should only be impossible to reach. Reaching our start_pos
-        // means we searched didn't find an empty spoint in the bucket.
-        // But there does exist a fast-pass for this therefor this 
-        // should not be reachable and just exists as a fallback to 
-        // avoid beeing stuck in an endless loop.
-        return 0;
-      }
-    }
+  if (get_id(seen_ids_map, id)) {
+    return 0;  // already seen
+  } else {
+    set_id(seen_ids_map, id);
+    seen_ids_count++;
+    return 1;  // new
   }
 }
 
