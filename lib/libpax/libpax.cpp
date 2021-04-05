@@ -51,10 +51,6 @@ int get_id(bitmap_t *bitmap, uint16_t id) {
  * returns 1 if id is new, 0 if already seen this is since last reset
  */
 int add_to_bucket(uint16_t id) {
-  if (seen_ids_count == LIBPAX_MAX_SIZE) {
-    return 0;  // fastpath if map is full
-  }
-
   if (get_id(seen_ids_map, id)) {
     return 0;  // already seen
   } else {
