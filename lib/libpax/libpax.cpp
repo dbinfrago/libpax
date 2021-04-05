@@ -64,9 +64,8 @@ int add_to_bucket(uint16_t id) {
   }
 }
 
-
 void reset_bucket() {
-  memset(seen_ids, 0, sizeof(seen_ids));
+  memset(seen_ids_map, 0, sizeof(seen_ids_map));
   seen_ids_count = 0;
 }
 
