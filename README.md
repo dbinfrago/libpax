@@ -5,7 +5,7 @@ This is a library meant to be used for enabling pax-counting in other projects.
 For an application facilitating pax-counting, see [ESP32-Paxcounter](https://github.com/cyberman54/ESP32-Paxcounter).
 The library was extracted from the ESP32-Paxcounter project to enhance reusability.
 
-Current version: **0.1.2**
+Current version: **0.1.3**
 
 A **1.0** should follow shortly, after which API is considered stable.
 
@@ -28,10 +28,7 @@ LIBPAX_WIFI
 LIBPAX_BLE
 ```
 
-Select the size for storing mac addresses in RAM:
-```
-LIBPAX_MAX_SIZE int [default: 1000] - Number of remembered devices, RAM usage: LIBPAX_MAX_SIZE * 2 Byte
-```
+The number of remembered devices is limited to 0xFFFF, requiring 0x1FFF (8 Kbytes) of RAM.
 
 ## Examples
 
