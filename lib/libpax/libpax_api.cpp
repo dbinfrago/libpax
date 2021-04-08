@@ -51,7 +51,10 @@ void libpax_counter_reset() {
 void report(TimerHandle_t xTimer) {
     fill_counter(pCurrent_count);
     report_callback();
-    libpax_counter_reset();
+    // clear counter if not in cumulative counter mode
+    if (counter_mode != 1) {
+      libpax_counter_reset();
+    }
 }
 
 void libpax_serialize_config(char* store_addr, struct libpax_config_t* configuration) {
