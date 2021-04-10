@@ -78,6 +78,9 @@ int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   uint16_t *id;
   // mac addresses are 6 bytes long, we only use the last two bytes
   id = (uint16_t *)(paddr + 4);
+    
+  //ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
+  //         paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
   
   int added = add_to_bucket(*id);
 
