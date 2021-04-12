@@ -4,6 +4,31 @@
 #include <libpax.h>
 #include <libpax_api.h>
 
+/*
+  Tests if both of the last two bytes of the MAC are used in the counting algorithm.
+*/
+void test_mac_add_bytes() {
+  libpax_counter_reset();
+  uint8_t test_mac_addr[6] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+  test_mac_addr[4] = 0x01;
+  test_mac_addr[5] = 0x01;
+  mac_add(test_mac_addr, MAC_SNIFF_WIFI);
+  test_mac_addr[4] = 0x02;
+  test_mac_addr[5] = 0x01;
+  mac_add(test_mac_addr, MAC_SNIFF_WIFI);
+  TEST_ASSERT_EQUAL(2, libpax_wifi_counter_count());
+
+  libpax_counter_reset();
+  TEST_ASSERT_EQUAL(0, libpax_wifi_counter_count());
+  test_mac_addr[4] = 0x01;
+  test_mac_addr[5] = 0x01;
+  mac_add(test_mac_addr, MAC_SNIFF_WIFI);
+  test_mac_addr[4] = 0x01;
+  test_mac_addr[5] = 0x02;
+  mac_add(test_mac_addr, MAC_SNIFF_WIFI);
+  TEST_ASSERT_EQUAL(2, libpax_wifi_counter_count());
+}
+
 /* test the function  libpax_counter_add_mac
 1. add 100 diffrent mac addresses, the count should increase
 2. add 100 same mac addresses, the count should not increase
@@ -15,7 +40,7 @@ void test_collision_add() {
 
   uint16_t *test_mac_addr_p = (uint16_t *)(test_mac_addr + 4);
   *test_mac_addr_p = 1;
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 1000; i++) {
     int count_start = libpax_wifi_counter_count();
     mac_add(test_mac_addr, MAC_SNIFF_WIFI);
     TEST_ASSERT_EQUAL(1, libpax_wifi_counter_count() - count_start);
@@ -24,7 +49,7 @@ void test_collision_add() {
 
   ESP_LOGI("testing", "Collision tests starts ###");
   *test_mac_addr_p = 1;
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 1000; i++) {
     int count_start = libpax_wifi_counter_count();
     mac_add(test_mac_addr, MAC_SNIFF_WIFI);
     TEST_ASSERT_EQUAL(libpax_wifi_counter_count(), count_start);
@@ -172,6 +197,7 @@ void test_integration() {
 void run_tests() {
    UNITY_BEGIN();
 
+    RUN_TEST(test_mac_add_bytes);
     RUN_TEST(test_collision_add);
     RUN_TEST(test_counter_reset);
     RUN_TEST(test_config_store);
