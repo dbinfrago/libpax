@@ -79,11 +79,11 @@ int libpax_ble_counter_count() {
 
 
 int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
+  uint16_t *id;
   // mac addresses are 6 bytes long, we only use the last two bytes
-  uint16_t id = *(paddr + 4);
-
+  id = (uint16_t *)(paddr + 4);
   
-  int added = add_to_bucket(id);
+  int added = add_to_bucket(*id);
 
   // Count only if MAC was not yet seen
   if (added) {
