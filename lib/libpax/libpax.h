@@ -24,8 +24,8 @@
 // #define SPI_MAIN 1
 // #define WATCHDOG_TEST 1
 
-#define CONFIG_MAJOR_VERSION 0
-#define CONFIG_MINOR_VERSION 1
+#define CONFIG_MAJOR_VERSION 1
+#define CONFIG_MINOR_VERSION 0
 
 /*
  Memory payload structure for persiting configurations

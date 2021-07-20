@@ -90,6 +90,7 @@ void libpax_default_config(struct libpax_config_t* configuration) {
     configuration->wifi_channel_map = 0b100010100100100;
     configuration->wifi_channel_switch_interval = 50;
     configuration->wifi_rssi_threshold = 0;
+    configuration->ble_rssi_threshold = 0;
     configuration->blescaninterval = 80;
     configuration->blescantime = 0;
     configuration->blescanwindow = 80;
@@ -148,9 +149,9 @@ int libpax_counter_start() {
         return -1;
     }
     if(current_config.wificounter) {
-        set_country(current_config.wifi_my_country);
-        set_channels(current_config.wifi_channel_map);
-        set_rssi_filter(current_config.wifi_rssi_threshold);
+        set_wifi_country(current_config.wifi_my_country);
+        set_wifi_channels(current_config.wifi_channel_map);
+        set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
         wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     }
     if(current_config.wificounter && current_config.blecounter) {
@@ -159,6 +160,7 @@ int libpax_counter_start() {
         esp_wifi_set_ps(WIFI_PS_NONE);
     }
     if(current_config.blecounter) {
+        set_BLE_rssi_filter(current_config.ble_rssi_threshold);
         start_BLE_scan(current_config.blescantime, current_config.blescanwindow, current_config.blescaninterval);
     }
     return 0;

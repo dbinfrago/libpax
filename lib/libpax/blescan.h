@@ -12,5 +12,6 @@
 
 void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval);
 void stop_BLE_scan(void);
+void set_BLE_rssi_filter(int set_rssi_threshold);
 
 #endif
