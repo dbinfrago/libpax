@@ -93,7 +93,7 @@ void set_wifi_channels(uint16_t set_channels_map) {
   channels_map = set_channels_map;
 }
 
-void set_wifi_rssi_filter(int8_t set_rssi_threshold) {
+void set_wifi_rssi_filter(int set_rssi_threshold) {
   wifi_rssi_threshold = set_rssi_threshold;
 }
 
