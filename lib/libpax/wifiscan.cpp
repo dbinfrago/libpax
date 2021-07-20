@@ -37,7 +37,7 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
-int rssi_threshold = 0;
+int wifi_rssi_threshold = 0;
 
 // configData_t cfg_pax;
 
