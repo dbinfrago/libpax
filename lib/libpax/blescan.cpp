@@ -143,7 +143,6 @@ const char *btsig_gap_type(uint32_t gap_type) {
 // using IRAM_ATTR here to speed up callback function
 IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
                                     esp_ble_gap_cb_param_t *param) {
-
   esp_ble_gap_cb_param_t *p = (esp_ble_gap_cb_param_t *)param;
 
 #ifdef VERBOSE
@@ -189,6 +188,12 @@ IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
 
       // add this device mac to processing queue
 
+      if ((ble_rssi_threshold) &&
+            (p->scan_rst.rssi < ble_rssi_threshold))  // rssi is negative value
+        {
+          break;
+        }
+        
       mac_add((uint8_t *)p->scan_rst.bda, MAC_SNIFF_BLE);
 
       /* to be improved in vendorfilter if:
@@ -320,3 +325,7 @@ void stop_BLE_scan(void) {
   }
 #endif
 } // stop_BLEscan
+
+void set_BLE_rssi_filter(int set_rssi_threshold) {
+  ble_rssi_threshold = set_rssi_threshold;
+}
