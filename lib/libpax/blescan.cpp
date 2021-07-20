@@ -39,6 +39,7 @@ Which in turn is based of nkolban's esp32 snippets:
 // local Tag for logging
 static const char TAG[] = "bluetooth";
 int initialized_ble = 0;
+int ble_rssi_threshold = 0;
 uint16_t used_blescantime = 0;
 
 #ifdef VERBOSE
