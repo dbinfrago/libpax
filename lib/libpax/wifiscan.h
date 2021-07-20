@@ -20,9 +20,9 @@ typedef struct {
 
 // extern const wifi_ieee80211_mac_hdr_t *hdr;
 
-void set_country(uint8_t country_code);
-void set_channels(uint16_t channels_map);
-void set_rssi_filter(int8_t set_rssi_threshold);
+void set_wifi_country(uint8_t country_code);
+void set_wifi_channels(uint16_t channels_map);
+void set_wifi_rssi_filter(int set_rssi_threshold);
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval);
 void wifi_sniffer_stop();
