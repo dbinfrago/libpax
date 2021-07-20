@@ -5,7 +5,7 @@ This is a library meant to be used for enabling pax-counting in other projects.
 For an application facilitating pax-counting, see [ESP32-Paxcounter](https://github.com/cyberman54/ESP32-Paxcounter).
 The library was extracted from the ESP32-Paxcounter project to enhance reusability.
 
-Current version: **0.1.3**
+Current version: **1.0.0 RC1**
 
 A **1.0** should follow shortly, after which API is considered stable.
 
