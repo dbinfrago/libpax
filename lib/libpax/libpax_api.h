@@ -56,7 +56,7 @@ struct count_payload_t {
  *   @param[in] pax_report_interval defines interval in ms between a pax count callback.
  *   @param[in] countermode avalible modes TBD
 */
-int libpax_counter_init(void (*callback)(void), struct count_payload_t* current_count, uint16_t pax_report_interval, int countermode);
+int libpax_counter_init(void (*callback)(void), struct count_payload_t* current_count, uint16_t pax_report_interval_sec, int countermode);
 
 /**
  *   Starts hardware wifi layer and counting of pax
