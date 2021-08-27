@@ -125,7 +125,7 @@ int libpax_update_config(struct libpax_config_t* configuration) {
 }
 
 TimerHandle_t PaxReportTimer = NULL;
-int libpax_counter_init(void (*init_callback)(void), struct count_payload_t* init_current_count, uint16_t init_pax_report_interval, int init_counter_mode) {
+int libpax_counter_init(void (*init_callback)(void), struct count_payload_t* init_current_count, uint16_t init_pax_report_interval_sec, int init_counter_mode) {
     if (PaxReportTimer != NULL && xTimerIsTimerActive(PaxReportTimer)) {
         ESP_LOGW("initialization", "lib already active. Ignoring new init.");
         return -1;
@@ -137,7 +137,7 @@ int libpax_counter_init(void (*init_callback)(void), struct count_payload_t* ini
 
     libpax_counter_reset();
 
-    PaxReportTimer = xTimerCreate("PaxReportTimer", pdMS_TO_TICKS(init_pax_report_interval),
+    PaxReportTimer = xTimerCreate("PaxReportTimer", pdMS_TO_TICKS(init_pax_report_interval_sec * 1000),
                                 pdTRUE, (void*)0, report);
     xTimerStart(PaxReportTimer, 0);
     return 0;
