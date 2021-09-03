@@ -397,6 +397,9 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
       ESP_LOGE(TAG, "Queue creation failed\n");
       return;
     }
+    
+    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 6,
+                            &hci_eventprocessor, 0);
 
     esp_vhci_host_register_callback(&vhci_host_cb);
     while (continue_commands) {
@@ -442,8 +445,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
       }
       vTaskDelay(1000 / portTICK_RATE_MS);
     }
-    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 6,
-                            &hci_eventprocessor, 0);
 
     ESP_LOGI(TAG, "Bluetooth scanner started");
     initialized_ble = 1;
