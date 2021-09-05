@@ -1,3 +1,6 @@
+// see Bluetooth Specification v5.0
+// e.g. https://www.mouser.it/pdfdocs/bluetooth-Core-v50.pdf
+
 #include "blescan.h"
 #include "libpax.h"
 
@@ -50,7 +53,7 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
   host_rcv_data_t send_data;
   uint8_t *data_pkt;
   /* Check second byte for HCI event. If event opcode is 0x0e, the event is
-   * HCI Command Complete event. Sice we have received "0x0e" event, we can
+   * HCI Command Complete event. Since we have received "0x0e" event, we can
    * check for byte 4 for command opcode and byte 6 for it's return status. */
   if (data[1] == 0x0e) {
     if (data[6] != 0) {
@@ -95,7 +98,8 @@ static void hci_cmd_send_set_evt_mask(void) {
 
 static void hci_cmd_send_ble_scan_params(void) {
   /* Set scan type to 0x01 for active scanning and 0x00 for passive scanning. */
-  uint8_t scan_type = 0x01;
+  // see see # Bluetooth Specification v5.0, Vol 6, Part B, sec 4.4.3.1
+  uint8_t scan_type = 0x00;  // passive scan, since we don't need / want answers
 
   /* Scan window and Scan interval are set in terms of number of slots. Each
    * slot is of 625 microseconds. */
@@ -198,7 +202,6 @@ void hci_evt_process(void *pvParameters) {
 
       /* Parsing `data' and copying in various fields. */
       // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
-      // e.g. https://www.mouser.it/pdfdocs/bluetooth-Core-v50.pdf
 
       hci_event_opcode = queue_data[++data_ptr];
       if (hci_event_opcode == LE_META_EVENTS) {
