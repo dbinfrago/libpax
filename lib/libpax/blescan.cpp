@@ -200,7 +200,10 @@ void hci_evt_process(void *pvParameters) {
       data_ptr = 0;
       queue_data = rcv_data->q_data;
 
-      /* Parsing `data' and copying in various fields. */
+      /* Parsing `data' and copying in various fields. */         
+      // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
+      // e.g. https://www.mouser.it/pdfdocs/bluetooth-Core-v50.pdf
+            
       hci_event_opcode = queue_data[++data_ptr];
       if (hci_event_opcode == LE_META_EVENTS) {
         /* Set `data_ptr' to 4th entry, which will point to sub event. */
