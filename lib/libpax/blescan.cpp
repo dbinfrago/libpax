@@ -11,15 +11,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef BLESCANWINDOW
+#define BLESCANWINDOW 80  // [milliseconds]
+#endif
+
+#ifndef BLESCANINTERVAL
+#define BLESCANINTERVAL 80  // [illiseconds]
+#endif
+
 // local Tag for logging
 static const char TAG[] = "bluetooth";
 int initialized_ble = 0;
 int ble_rssi_threshold = 0;
-
-typedef struct {
-  char scan_local_name[32];
-  uint8_t name_len;
-} ble_scan_local_name_t;
 
 typedef struct {
   uint8_t *q_data;
@@ -28,20 +31,15 @@ typedef struct {
 
 static uint8_t hci_cmd_buf[128];
 
-static uint16_t scanned_count = 0;
 static QueueHandle_t adv_queue;
 static TaskHandle_t hci_eventprocessor;
-
-static void periodic_timer_callback(void *arg) {
-  ESP_LOGI(TAG, "Number of received advertising reports: %d", scanned_count);
-}
 
 /*
  * @brief: BT controller callback function, used to notify the upper layer that
  *         controller is ready to receive command
  */
 static void controller_rcv_pkt_ready(void) {
-  ESP_LOGI(TAG, "controller rcv pkt ready");
+  // nothing to do here
 }
 
 /*
@@ -52,12 +50,10 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
   host_rcv_data_t send_data;
   uint8_t *data_pkt;
   /* Check second byte for HCI event. If event opcode is 0x0e, the event is
-   * HCI Command Complete event. Sice we have recieved "0x0e" event, we can
+   * HCI Command Complete event. Sice we have received "0x0e" event, we can
    * check for byte 4 for command opcode and byte 6 for it's return status. */
   if (data[1] == 0x0e) {
-    if (data[6] == 0) {
-      ESP_LOGI(TAG, "Event opcode 0x%02x success.", data[4]);
-    } else {
+    if (data[6] != 0) {
       ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", data[4],
                data[6]);
       return ESP_FAIL;
@@ -188,7 +184,7 @@ void hci_evt_process(void *pvParameters) {
   while (1) {
     uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
     uint8_t *queue_data = NULL, *event_type = NULL, *addr_type = NULL,
-            *addr = NULL, *data_len = NULL, *data_msg = NULL;
+            *addr = NULL, *data_len = NULL;
     short int *rssi = NULL;
     uint16_t data_ptr;
     total_data_len = 0;
@@ -200,10 +196,10 @@ void hci_evt_process(void *pvParameters) {
       data_ptr = 0;
       queue_data = rcv_data->q_data;
 
-      /* Parsing `data' and copying in various fields. */         
+      /* Parsing `data' and copying in various fields. */
       // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
       // e.g. https://www.mouser.it/pdfdocs/bluetooth-Core-v50.pdf
-            
+
       hci_event_opcode = queue_data[++data_ptr];
       if (hci_event_opcode == LE_META_EVENTS) {
         /* Set `data_ptr' to 4th entry, which will point to sub event. */
@@ -211,8 +207,6 @@ void hci_evt_process(void *pvParameters) {
         sub_event = queue_data[data_ptr++];
         /* Check if sub event is LE advertising report event. */
         if (sub_event == HCI_LE_ADV_REPORT) {
-          scanned_count += 1;
-
           /* Get number of advertising reports. */
           num_responses = queue_data[data_ptr++];
 
@@ -275,10 +269,16 @@ void hci_evt_process(void *pvParameters) {
           }
           for (uint8_t i = 0; i < num_responses; i += 1) {
             rssi[i] = -(0xFF - queue_data[data_ptr++]);
-            if ((ble_rssi_threshold) &&
-                (rssi[i] >= ble_rssi_threshold)) {  // rssi is negative value
+          }
+
+          /* Evaluate each advertising report to count as pax */
+          for (uint8_t i = 0; i < num_responses; i += 1) {
+            bool count = true;
+            if ((event_type[i] != 0x04) || (addr_type[i] > 0x01) ||
+                (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold)))
+              continue;  // do not count
+            else
               mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
-            }
           }
 
           /* Freeing all spaces allocated. */
@@ -311,24 +311,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
 #endif
 
-    bool continue_commands = 1;
-    int cmd_cnt = 0;
-
-    const esp_timer_create_args_t periodic_timer_args = {
-      callback : &periodic_timer_callback,
-      arg : NULL,
-      dispatch_method : ESP_TIMER_TASK,
-      name : "periodic"
-    };
-
-    /* Create timer for logging scanned devices. */
-    esp_timer_handle_t periodic_timer;
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-
-    /* Start periodic timer for BLESCANTIME sec. */
-    ESP_ERROR_CHECK(
-        esp_timer_start_periodic(periodic_timer, BLESCANTIME * 1000000));
-
     /* Initialize NVS — it is used to store PHY calibration data */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
@@ -339,16 +321,22 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     ESP_ERROR_CHECK(ret);
 
     /* A queue for storing received HCI packets. */
-    adv_queue = xQueueCreate(15, sizeof(host_rcv_data_t));
+    adv_queue = xQueueCreate(30, sizeof(host_rcv_data_t));
     if (adv_queue == NULL) {
       ESP_LOGE(TAG, "Queue creation failed\n");
       return;
     }
 
-    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 6,
+    /* start HCI event processor task */
+    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
                             &hci_eventprocessor, 0);
 
     esp_vhci_host_register_callback(&vhci_host_cb);
+
+    /* start BLE advertising and scanning */
+    bool continue_commands = 1;
+    int cmd_cnt = 0;
+
     while (continue_commands) {
       if (continue_commands && esp_vhci_host_check_send_available()) {
         switch (cmd_cnt) {
@@ -388,9 +376,8 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             continue_commands = 0;
             break;
         }
-        ESP_LOGI(TAG, "BLE Advertise, cmd_sent: %d", cmd_cnt);
       }
-      vTaskDelay(1000 / portTICK_RATE_MS);
+      vTaskDelay(500 / portTICK_RATE_MS);
     }
 
     ESP_LOGI(TAG, "Bluetooth scanner started");
