@@ -277,7 +277,7 @@ void hci_evt_process(void *pvParameters) {
             rssi[i] = -(0xFF - queue_data[data_ptr++]);
             if ((ble_rssi_threshold) &&
                 (rssi[i] >= ble_rssi_threshold)) {  // rssi is negative value
-              mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE, rssi[i]);
+              mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
             }
           }
 
