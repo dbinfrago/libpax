@@ -176,33 +176,6 @@ static void hci_cmd_send_ble_set_adv_data(void) {
   ESP_LOGI(TAG, "Starting BLE advertising with name \"%s\"", adv_name);
 }
 
-static esp_err_t get_local_name(uint8_t *data_msg, uint8_t data_len,
-                                ble_scan_local_name_t *scanned_packet) {
-  uint8_t curr_ptr = 0, curr_len, curr_type;
-  while (curr_ptr < data_len) {
-    curr_len = data_msg[curr_ptr++];
-    curr_type = data_msg[curr_ptr++];
-    if (curr_len == 0) {
-      return ESP_FAIL;
-    }
-
-    /* Search for current data type and see if it contains name as data (0x08 or
-     * 0x09). */
-    if (curr_type == 0x08 || curr_type == 0x09) {
-      for (uint8_t i = 0; i < curr_len - 1; i += 1) {
-        scanned_packet->scan_local_name[i] = data_msg[curr_ptr + i];
-      }
-      scanned_packet->name_len = curr_len - 1;
-      return ESP_OK;
-    } else {
-      /* Search for next data. Current length includes 1 octate for AD Type (2nd
-       * octate). */
-      curr_ptr += curr_len - 1;
-    }
-  }
-  return ESP_FAIL;
-}
-
 void hci_evt_process(void *pvParameters) {
   host_rcv_data_t *rcv_data =
       (host_rcv_data_t *)malloc(sizeof(host_rcv_data_t));
@@ -213,15 +186,13 @@ void hci_evt_process(void *pvParameters) {
   esp_err_t ret;
 
   while (1) {
-    uint8_t sub_event, num_responses, total_data_len, data_msg_ptr,
-        hci_event_opcode;
+    uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
     uint8_t *queue_data = NULL, *event_type = NULL, *addr_type = NULL,
             *addr = NULL, *data_len = NULL, *data_msg = NULL;
     short int *rssi = NULL;
     uint16_t data_ptr;
-    ble_scan_local_name_t *scanned_name = NULL;
     total_data_len = 0;
-    data_msg_ptr = 0;
+
     if (xQueueReceive(adv_queue, rcv_data, portMAX_DELAY) != pdPASS) {
       ESP_LOGE(TAG, "Queue receive error");
     } else {
@@ -241,6 +212,11 @@ void hci_evt_process(void *pvParameters) {
 
           /* Get number of advertising reports. */
           num_responses = queue_data[data_ptr++];
+
+          // skip event type and advertising type for every report
+          // data_ptr += 2 * num_responses;
+
+          /* Get event type for every report. */
           event_type = (uint8_t *)malloc(sizeof(uint8_t) * num_responses);
           if (event_type == NULL) {
             ESP_LOGE(TAG, "Malloc event_type failed!");
@@ -285,22 +261,10 @@ void hci_evt_process(void *pvParameters) {
             total_data_len += queue_data[data_ptr++];
           }
 
-          if (total_data_len != 0) {
-            /* Get all data packets. */
-            data_msg = (uint8_t *)malloc(sizeof(uint8_t) * total_data_len);
-            if (data_msg == NULL) {
-              ESP_LOGE(TAG, "Malloc data_msg failed!");
-              goto reset;
-            }
-            for (uint8_t i = 0; i < num_responses; i += 1) {
-              for (uint8_t j = 0; j < data_len[i]; j += 1) {
-                data_msg[data_msg_ptr++] = queue_data[data_ptr++];
-              }
-            }
-          }
+          /* skip all data packets. */
+          data_ptr += total_data_len;
 
-          /* Counts of advertisements done. This count is set in advertising
-           * data every time before advertising. */
+          /* Get rssi for each advertising report. */
           rssi = (short int *)malloc(sizeof(short int) * num_responses);
           if (data_len == NULL) {
             ESP_LOGE(TAG, "Malloc rssi failed!");
@@ -308,35 +272,15 @@ void hci_evt_process(void *pvParameters) {
           }
           for (uint8_t i = 0; i < num_responses; i += 1) {
             rssi[i] = -(0xFF - queue_data[data_ptr++]);
-          }
-
-          /* Extracting advertiser's name. */
-          data_msg_ptr = 0;
-          scanned_name = (ble_scan_local_name_t *)malloc(
-              num_responses * sizeof(ble_scan_local_name_t));
-          if (data_len == NULL) {
-            ESP_LOGE(TAG, "Malloc scanned_name failed!");
-            goto reset;
-          }
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            ret = get_local_name(&data_msg[data_msg_ptr], data_len[i],
-                                 scanned_name);
-
-            /* count MAC if adv report has a valid name. */
-            if (ret == ESP_OK) {
-              data_msg_ptr += data_len[i];
-              if ((ble_rssi_threshold) &&
-                  (rssi[i] < ble_rssi_threshold)) {  // rssi is negative value
-                mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
-              }
+            if ((ble_rssi_threshold) &&
+                (rssi[i] >= ble_rssi_threshold)) {  // rssi is negative value
+              mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE, rssi[i]);
             }
           }
 
           /* Freeing all spaces allocated. */
         reset:
-          free(scanned_name);
           free(rssi);
-          free(data_msg);
           free(data_len);
           free(addr);
           free(addr_type);
@@ -397,7 +341,7 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
       ESP_LOGE(TAG, "Queue creation failed\n");
       return;
     }
-    
+
     xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 6,
                             &hci_eventprocessor, 0);
 
