@@ -20,7 +20,7 @@ void init() {
   libpax_update_config(&configuration);
 
   // internal processing initialization
-  libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1); 
+  libpax_counter_init(process_count, &count_from_libpax, 10, 1); 
   libpax_counter_start();
 }
 
