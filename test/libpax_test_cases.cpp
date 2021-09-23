@@ -145,7 +145,7 @@ void test_integration() {
   libpax_update_config(&configuration);
 
   // internal processing initialization
-  int err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  int err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
   test_stop();
@@ -157,7 +157,7 @@ void test_integration() {
   gotConfiguration.blecounter = 0;
   gotConfiguration.wificounter = 0;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 
@@ -165,7 +165,7 @@ void test_integration() {
   gotConfiguration.blecounter = 0;
   gotConfiguration.wificounter = 1;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 
@@ -173,7 +173,7 @@ void test_integration() {
   gotConfiguration.blecounter = 1;
   gotConfiguration.wificounter = 0;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1);
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 
@@ -181,7 +181,7 @@ void test_integration() {
   gotConfiguration.blecounter = 0;
   gotConfiguration.wificounter = 1;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 
@@ -189,7 +189,7 @@ void test_integration() {
   gotConfiguration.blecounter = 1;
   gotConfiguration.wificounter = 1;
   libpax_update_config(&gotConfiguration);
-  err_code = libpax_counter_init(process_count, &count_from_libpax, 10*100, 1); 
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1); 
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
 }
