@@ -183,7 +183,6 @@ void hci_evt_process(void *pvParameters) {
     ESP_LOGE(TAG, "Malloc rcv_data failed!");
     return;
   }
-  esp_err_t ret;
 
   while (1) {
     uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
@@ -276,7 +275,6 @@ void hci_evt_process(void *pvParameters) {
 
           /* Evaluate each advertising report to count as pax */
           for (uint8_t i = 0; i < num_responses; i += 1) {
-            bool count = true;
             //if ((event_type[i] != 0x04) || (addr_type[i] > 0x01) ||
             //    (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold)))
               if (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold))
