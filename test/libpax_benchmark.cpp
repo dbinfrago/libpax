@@ -1,10 +1,10 @@
-#include <list>
 #include <algorithm>
+#include <list>
 #include "esp_log.h"
-#include "unity.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
 #include "freertos/queue.h"
+#include "freertos/timers.h"
+#include "unity.h"
 
 #include <libpax_api.h>
 
@@ -14,19 +14,19 @@ extern "C" void libpax_counter_reset();
 extern "C" int add_to_bucket(uint16_t id);
 extern "C" void reset_bucket();
 
-
 double mean(const std::list<double>& data) {
-        return std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+  return std::accumulate(data.begin(), data.end(), 0.0) / data.size();
 }
 
 double variance(const std::list<double>& data) {
-        double xBar = mean(data);
-        double sqSum = std::inner_product(data.begin(), data.end(), data.begin(), 0.0);
-        return sqSum / data.size() - xBar * xBar;
+  double xBar = mean(data);
+  double sqSum =
+      std::inner_product(data.begin(), data.end(), data.begin(), 0.0);
+  return sqSum / data.size() - xBar * xBar;
 }
 
 double stDev(const std::list<double>& data) {
-     return std::sqrt(variance(data));       
+  return std::sqrt(variance(data));
 }
 
 #define MACS_TO_INSERT 500
@@ -40,13 +40,14 @@ double stDev(const std::list<double>& data) {
 int queue_lock = 0;
 QueueHandle_t queue;
 TaskHandle_t testProcessTask;
-void process_queue(void *pvParameters){
-  uint32_t dequeued_element;
+void process_queue(void* pvParameters) {
+  uint16_t dequeued_element;
   queue_lock = 1;
-  while(queue_lock) {
+  while (queue_lock) {
     if (xQueueReceive(queue, &dequeued_element, 10) != pdTRUE) {
       if (queue_lock) {
-        ESP_LOGE("queue", "Premature return from xQueueReceive() with no data!");
+        ESP_LOGE("queue",
+                 "Premature return from xQueueReceive() with no data!");
       }
       continue;
     }
@@ -54,36 +55,34 @@ void process_queue(void *pvParameters){
   }
   vTaskDelete(testProcessTask);
 }
- 
+
 #define QUEUE_SIZE 50
 void queue_test_init() {
-    queue = xQueueCreate(QUEUE_SIZE, sizeof(uint32_t));
+  queue = xQueueCreate(QUEUE_SIZE, sizeof(uint16_t));
 
-    xTaskCreatePinnedToCore(process_queue,     // task function
-                            "test_queue_process",   // name of task
-                            2048,            // stack size of task
-                            (void *)1,       // parameter of the task
-                            1,               // priority of the task
-                            &testProcessTask, // task handle
-                            1);              // CPU core
+  xTaskCreatePinnedToCore(process_queue,         // task function
+                          "test_queue_process",  // name of task
+                          2048,                  // stack size of task
+                          (void*)1,              // parameter of the task
+                          1,                     // priority of the task
+                          &testProcessTask,      // task handle
+                          1);                    // CPU core
 }
 
-void queue_test(uint32_t mac_to_add) {
-    if (xQueueSendToBack(queue, (void *)&mac_to_add, 10) !=
-        pdPASS) {
-          ESP_LOGW("queue", "Queue overflow!");
-    }
+int queue_test(uint16_t mac_to_add) {
+  if (xQueueSendToBack(queue, (void*)&mac_to_add, 10) != pdPASS) {
+    ESP_LOGW("queue", "Queue overflow!");
+  }
+  return 1;
 }
 
 void queue_test_deinit() {
-    queue_lock = 0;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    vQueueDelete(queue);
+  queue_lock = 0;
+  vTaskDelay(pdMS_TO_TICKS(200));
+  vQueueDelete(queue);
 }
 
-void noop() {
-
-}
+void noop() {}
 
 int seen = 0;
 int collision = 0;
@@ -100,62 +99,46 @@ void print_debug() {
   printf("%d;%d;%d;\n", seen, collision, new_insert);
 }
 
-
 struct methodes_to_test_t {
   char name[16];
   void (*init)();
-  void (*use)(uint32_t);
+  int (*use)(uint16_t);
   void (*deinit)();
   void (*reset)();
 };
 
 methodes_to_test_t methodes_to_test[3] = {
-  {
-    "queue",
-    queue_test_init,
-    queue_test,
-    queue_test_deinit,
-    libpax_counter_reset
-  },
-  // {
-  //   "default",
-  //   noop,
-  //   libpax_wifi_counter_add_mac,
-  //   noop,
-  //   libpax_wifi_counter_reset
-  // },
-  {
-    "homebrew",
-    reset_debug,
-    add_to_bucket,
-    print_debug,
-    reset_bucket
-  }
-};
+    {"queue", queue_test_init, queue_test, queue_test_deinit,
+     libpax_counter_reset},
+    //{"default", noop, libpax_wifi_counter_add_mac, noop,
+    // libpax_wifi_counter_reset},
+    {"homebrew", reset_debug, add_to_bucket, print_debug, reset_bucket}};
 
 /*
 Benchmark test
 */
-TEST_CASE("adding_macs should be fast enough to support 2000 packages per second", "[benchmark]") {
-  for(int method_index = 0; method_index < 2; method_index++)
-  {
+TEST_CASE(
+    "adding_macs should be fast enough to support 2000 packages per second",
+    "[benchmark]") {
+  for (int method_index = 0; method_index < 2; method_index++) {
     int16_t redundant_tests = REDUNANTEN_TESTS;
     std::list<double> times;
-    int is_active = 0; 
-    #ifdef ROUND_ROBIN_SIMULATION
-      is_active  = 1;
-    #endif
+    int is_active = 0;
+#ifdef ROUND_ROBIN_SIMULATION
+    is_active = 1;
+#endif
     printf("ROUND_ROBIN_SIMULATION; %d;\n", is_active);
-    is_active  = 0;
-    #ifdef BURST_SIMULATION
-      is_active  = 1;
-    #endif
+    is_active = 0;
+#ifdef BURST_SIMULATION
+    is_active = 1;
+#endif
     printf("BURST_SIMULATION; %d;\n", is_active);
     printf("method_name; macs_inserted; iterations_per_time_measure;\n");
-    printf("%s; %d; %d;\n", methodes_to_test[method_index].name, MACS_TO_INSERT, ITERATIONS_PER_TIME_MEASURE);
+    printf("%s; %d; %d;\n", methodes_to_test[method_index].name, MACS_TO_INSERT,
+           ITERATIONS_PER_TIME_MEASURE);
     printf("Scale is in microseconds;\n");
     printf("time_min; time_max; time_mean; time_variance; time_stDev\n");
-    while(redundant_tests > 0) {
+    while (redundant_tests > 0) {
       int64_t start_time = 0;
       redundant_tests--;
       methodes_to_test[method_index].init();
@@ -163,52 +146,52 @@ TEST_CASE("adding_macs should be fast enough to support 2000 packages per second
       start_time = esp_timer_get_time();
       methodes_to_test[method_index].reset();
       printf("reset time;%lld;\n", esp_timer_get_time() - start_time);
-      
-      // run twice for collision simulation
-      #ifdef ROUND_ROBIN_SIMULATION
-      for(int run = 1; run <= 2; run++) {
-        
+
+// run twice for collision simulation
+#ifdef ROUND_ROBIN_SIMULATION
+      for (int run = 1; run <= 2; run++) {
         int64_t time_diff = 0;
         int16_t mac_count_to_insert = MACS_TO_INSERT;
-        uint32_t test_mac_addr = (uint32_t)100000;
-      
+        uint16_t test_mac_addr = (uint16_t)10000;
+
         start_time = esp_timer_get_time();
-        while(mac_count_to_insert > 0) {
-          if(mac_count_to_insert % ITERATIONS_PER_TIME_MEASURE == 0) {
+        while (mac_count_to_insert > 0) {
+          if (mac_count_to_insert % ITERATIONS_PER_TIME_MEASURE == 0) {
             time_diff = esp_timer_get_time() - start_time;
-            times.push_back(time_diff/ITERATIONS_PER_TIME_MEASURE);
+            times.push_back(time_diff / ITERATIONS_PER_TIME_MEASURE);
             start_time = esp_timer_get_time();
           }
           methodes_to_test[method_index].use(test_mac_addr);
-          test_mac_addr += (uint32_t)1;
+          test_mac_addr += (uint16_t)1;
           mac_count_to_insert -= 1;
         }
       }
-      #endif
+#endif
 
-      #ifdef BURST_SIMULATION
+#ifdef BURST_SIMULATION
       int64_t time_diff = 0;
       int16_t mac_count_to_insert = MACS_TO_INSERT;
-      uint32_t test_mac_addr = (uint32_t)100000;
+      uint16_t test_mac_addr = (uint16_t)10000;
 
       start_time = esp_timer_get_time();
       methodes_to_test[method_index].reset();
       printf("reset time;%lld;\n", esp_timer_get_time() - start_time);
       start_time = esp_timer_get_time();
-      while(mac_count_to_insert > 0) {
-        if(mac_count_to_insert % ITERATIONS_PER_TIME_MEASURE == 0) {
+      while (mac_count_to_insert > 0) {
+        if (mac_count_to_insert % ITERATIONS_PER_TIME_MEASURE == 0) {
           time_diff = esp_timer_get_time() - start_time;
-          times.push_back(time_diff/(ITERATIONS_PER_TIME_MEASURE * BURST_SICE));
+          times.push_back(time_diff /
+                          (ITERATIONS_PER_TIME_MEASURE * BURST_SICE));
           start_time = esp_timer_get_time();
         }
         methodes_to_test[method_index].use(test_mac_addr);
-        for(int i = 0; i < BURST_SICE; i++)
+        for (int i = 0; i < BURST_SICE; i++)
           methodes_to_test[method_index].use(test_mac_addr);
-        test_mac_addr += (uint32_t)1;
+        test_mac_addr += (uint16_t)1;
         mac_count_to_insert -= 1;
       }
-      #endif
-      
+#endif
+
       methodes_to_test[method_index].deinit();
 
       double time_min = *std::min_element(times.begin(), times.end());
@@ -216,10 +199,12 @@ TEST_CASE("adding_macs should be fast enough to support 2000 packages per second
       double time_mean = mean(times);
       double time_variance = variance(times);
       double time_stDev = stDev(times);
-      
-      printf("%f; %f; %f; %f; %f;\n", time_min, time_max, time_mean, time_variance, time_stDev);
 
-      TEST_ASSERT_LESS_THAN(1000*1000/SUPPORTED_PACKAGAES_PER_SECOND, time_max);
+      printf("%f; %f; %f; %f; %f;\n", time_min, time_max, time_mean,
+             time_variance, time_stDev);
+
+      TEST_ASSERT_LESS_THAN(1000 * 1000 / SUPPORTED_PACKAGAES_PER_SECOND,
+                            time_max);
     }
   }
 }
