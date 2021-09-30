@@ -275,9 +275,9 @@ void hci_evt_process(void *pvParameters) {
 
           /* Evaluate each advertising report to count as pax */
           for (uint8_t i = 0; i < num_responses; i += 1) {
-            //if ((event_type[i] != 0x04) || (addr_type[i] > 0x01) ||
+            // if ((event_type[i] != 0x04) || (addr_type[i] > 0x01) ||
             //    (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold)))
-              if (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold))
+            if (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold))
               continue;  // do not count
             else
               mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
@@ -379,7 +379,7 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             break;
         }
       }
-      vTaskDelay(500 / portTICK_RATE_MS);
+      vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     ESP_LOGI(TAG, "Bluetooth scanner started");
@@ -393,7 +393,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
 }  // start_BLEscan
 
 void stop_BLE_scan(void) {
-  vTaskDelete(hci_eventprocessor);
 #ifdef LIBPAX_BLE
   if (initialized_ble) {
     ESP_LOGI(TAG, "Shutting down bluetooth scanner ...");
