@@ -149,7 +149,7 @@ static void hci_cmd_send_ble_set_adv_param(void) {
 }
 
 static void hci_cmd_send_ble_set_adv_data(void) {
-  char const *adv_name = "LIBPAX";
+  char const *adv_name = "";
   uint8_t name_len = (uint8_t)strlen(adv_name);
   uint8_t adv_data[31] = {0x02, 0x01, 0x06, 0x0, 0x09};
   uint8_t adv_data_len;
@@ -162,6 +162,7 @@ static void hci_cmd_send_ble_set_adv_data(void) {
 
   uint16_t sz =
       make_cmd_ble_set_adv_data(hci_cmd_buf, adv_data_len, (uint8_t *)adv_data);
+
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
   ESP_LOGI(TAG, "Starting BLE advertising with name \"%s\"", adv_name);
 }
