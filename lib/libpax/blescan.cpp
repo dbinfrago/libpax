@@ -293,15 +293,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
 #ifdef LIBPAX_BLE
   ESP_LOGI(TAG, "Initializing bluetooth scanner ...");
 
-  /* Initialize NVS — it is used to store PHY calibration data. */
-  esp_err_t ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
-  }
-  ESP_ERROR_CHECK(ret);
-
 /* Initialize BT controller to allocate task and other resource. */
 #ifdef LIBPAX_ARDUINO
   if (btStart()) {
