@@ -4,16 +4,6 @@
 #include "blescan.h"
 #include "libpax.h"
 
-#include <bt_hci_common.h>
-#include <esp_bt.h>
-#include <esp_log.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
-#include <freertos/task.h>
-#include <nvs_flash.h>
-#include <stdio.h>
-#include <string.h>
-
 #ifndef BLESCANWINDOW
 #define BLESCANWINDOW 80  // [milliseconds]
 #endif
@@ -303,7 +293,16 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
 #ifdef LIBPAX_BLE
   ESP_LOGI(TAG, "Initializing bluetooth scanner ...");
 
-// Initialize BT controller to allocate task and other resource.
+  /* Initialize NVS — it is used to store PHY calibration data. */
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+
+/* Initialize BT controller to allocate task and other resource. */
 #ifdef LIBPAX_ARDUINO
   if (btStart()) {
 #endif
@@ -312,15 +311,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
     ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
 #endif
-
-    /* Initialize NVS — it is used to store PHY calibration data */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
 
     /* A queue for storing received HCI packets. */
     adv_queue = xQueueCreate(30, sizeof(host_rcv_data_t));
