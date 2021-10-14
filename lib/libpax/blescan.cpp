@@ -179,60 +179,40 @@ void hci_evt_process(void *pvParameters) {
     return;
   }
 
+  uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
+  uint16_t data_ptr;
+  short int rssi;
+
   while (1) {
-    uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
-    uint8_t *queue_data = NULL, *event_type = NULL, *addr_type = NULL,
-            *addr = NULL, *data_len = NULL;
-    short int *rssi = NULL;
-    uint16_t data_ptr;
+    uint8_t *queue_data = NULL, *addr = NULL;
     total_data_len = 0;
 
     if (xQueueReceive(adv_queue, rcv_data, portMAX_DELAY) != pdPASS) {
       ESP_LOGE(TAG, "Queue receive error");
     } else {
-      /* `data_ptr' keeps track of current position in the received data. */
+      // `data_ptr' keeps track of current position in the received data
       data_ptr = 0;
       queue_data = rcv_data->q_data;
 
-      /* Parsing `data' and copying in various fields. */
+      // Parsing `data' and copying in various fields
       // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
 
       hci_event_opcode = queue_data[++data_ptr];
       if (hci_event_opcode == LE_META_EVENTS) {
-        /* Set `data_ptr' to 4th entry, which will point to sub event. */
+        // set `data_ptr' to 4th entry, which will point to sub event
         data_ptr += 2;
         sub_event = queue_data[data_ptr++];
-        /* Check if sub event is LE advertising report event. */
+        // check if sub event is LE advertising report event
         if (sub_event == HCI_LE_ADV_REPORT) {
-          /* Get number of advertising reports. */
+          // get number of advertising reports
           num_responses = queue_data[data_ptr++];
 
-          // skip event type and advertising type for every report
-          // data_ptr += 2 * num_responses;
+          // skip 2 bytes event type and advertising type for every report
+          data_ptr += 2 * num_responses;
 
-          /* Get event type for every report. */
-          event_type = (uint8_t *)malloc(sizeof(uint8_t) * num_responses);
-          if (event_type == NULL) {
-            ESP_LOGE(TAG, "Malloc event_type failed!");
-            goto reset;
-          }
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            event_type[i] = queue_data[data_ptr++];
-          }
-
-          /* Get advertising type for every report. */
-          addr_type = (uint8_t *)malloc(sizeof(uint8_t) * num_responses);
-          if (addr_type == NULL) {
-            ESP_LOGE(TAG, "Malloc addr_type failed!");
-            goto reset;
-          }
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            addr_type[i] = queue_data[data_ptr++];
-          }
-
-          /* Get BD address in every advertising report and store in
-           * single array of length `6 * num_responses' as each address
-           * will take 6 spaces. */
+          // get BD address in every advertising report and store in
+          // single array of length `6 * num_responses' as each address
+          // will take 6 spaces
           addr = (uint8_t *)malloc(sizeof(uint8_t) * 6 * num_responses);
           if (addr == NULL) {
             ESP_LOGE(TAG, "Malloc addr failed!");
@@ -244,47 +224,26 @@ void hci_evt_process(void *pvParameters) {
             }
           }
 
-          /* Get length of data for each advertising report. */
-          data_len = (uint8_t *)malloc(sizeof(uint8_t) * num_responses);
-          if (data_len == NULL) {
-            ESP_LOGE(TAG, "Malloc data_len failed!");
-            goto reset;
-          }
+          // get length of data for each advertising report
           for (uint8_t i = 0; i < num_responses; i += 1) {
-            data_len[i] = queue_data[data_ptr];
             total_data_len += queue_data[data_ptr++];
           }
 
-          /* skip all data packets. */
+          // skip all data packets
           data_ptr += total_data_len;
 
-          /* Get rssi for each advertising report. */
-          rssi = (short int *)malloc(sizeof(short int) * num_responses);
-          if (data_len == NULL) {
-            ESP_LOGE(TAG, "Malloc rssi failed!");
-            goto reset;
-          }
+          // Count each advertising report within rssi threshold
           for (uint8_t i = 0; i < num_responses; i += 1) {
-            rssi[i] = -(0xFF - queue_data[data_ptr++]);
-          }
-
-          /* Evaluate each advertising report to count as pax */
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            // if ((event_type[i] != 0x04) || (addr_type[i] > 0x01) ||
-            //    (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold)))
-            if (ble_rssi_threshold && (rssi[i] < ble_rssi_threshold))
+            rssi = -(0xFF - queue_data[data_ptr++]);
+            if (ble_rssi_threshold && (rssi < ble_rssi_threshold))
               continue;  // do not count
             else
               mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
           }
 
-          /* Freeing all spaces allocated. */
+        // freeing all spaces allocated
         reset:
-          free(rssi);
-          free(data_len);
           free(addr);
-          free(addr_type);
-          free(event_type);
         }
       }
       free(queue_data);
