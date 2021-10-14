@@ -4,6 +4,10 @@
 #include "blescan.h"
 #include "libpax.h"
 
+#ifndef BLEADVERTISING
+#define BLEADVERTISING 0
+#endif
+
 #ifndef BLESCANWINDOW
 #define BLESCANWINDOW 80  // [milliseconds]
 #endif
@@ -113,6 +117,7 @@ static void hci_cmd_send_ble_scan_start(void) {
   ESP_LOGI(TAG, "BLE Scanning started..");
 }
 
+#if (BLEADVERTISING)
 static void hci_cmd_send_ble_adv_start(void) {
   uint16_t sz = make_cmd_ble_set_adv_enable(hci_cmd_buf, 1);
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
@@ -164,6 +169,7 @@ static void hci_cmd_send_ble_set_adv_data(void) {
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
   ESP_LOGI(TAG, "Starting BLE advertising");
 }
+#endif
 
 void hci_evt_process(void *pvParameters) {
   host_rcv_data_t *rcv_data =
@@ -322,7 +328,6 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     while (continue_commands) {
       if (continue_commands && esp_vhci_host_check_send_available()) {
         switch (cmd_cnt) {
-
           // send initialize commands
           case 0:
             hci_cmd_send_reset();
@@ -333,6 +338,7 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             ++cmd_cnt;
             break;
 
+#if (BLEADVERTISING)
           // setup undirected advertising, see BT 5.0 specs Vol 6, Part D, 3.1
           case 2:
             hci_cmd_send_ble_set_adv_param();
@@ -346,6 +352,11 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             hci_cmd_send_ble_adv_start();
             ++cmd_cnt;
             break;
+#else
+        case 2:
+          cmd_cnt = 5;
+          break;
+#endif
 
           // setup passive scanning, see BT 5.0 specs Vol 6, Part D, 4.1
           case 5:
