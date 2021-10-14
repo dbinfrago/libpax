@@ -322,6 +322,8 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     while (continue_commands) {
       if (continue_commands && esp_vhci_host_check_send_available()) {
         switch (cmd_cnt) {
+
+          // send initialize commands
           case 0:
             hci_cmd_send_reset();
             ++cmd_cnt;
@@ -331,7 +333,7 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             ++cmd_cnt;
             break;
 
-          /* Send advertising commands. */
+          // setup undirected advertising, see BT 5.0 specs Vol 6, Part D, 3.1
           case 2:
             hci_cmd_send_ble_set_adv_param();
             ++cmd_cnt;
@@ -345,7 +347,7 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             ++cmd_cnt;
             break;
 
-          /* Send scan commands. */
+          // setup passive scanning, see BT 5.0 specs Vol 6, Part D, 4.1
           case 5:
             hci_cmd_send_ble_scan_params();
             ++cmd_cnt;
@@ -354,6 +356,8 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             hci_cmd_send_ble_scan_start();
             ++cmd_cnt;
             break;
+
+          // all commands done
           default:
             continue_commands = 0;
             break;
