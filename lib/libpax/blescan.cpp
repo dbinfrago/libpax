@@ -130,8 +130,8 @@ static void hci_cmd_send_ble_set_adv_param(void) {
   uint16_t adv_intv_min = 0x100;
   uint16_t adv_intv_max = 0x100;
 
-  /* not connectable but scannable undirected advertising (ADV_SCAN_IND). */
-  uint8_t adv_type = 0b0110;
+  /* Connectable undirected advertising (ADV_IND). */
+  uint8_t adv_type = 0;
 
   /* Own address is public address. */
   uint8_t own_addr_type = 0;
