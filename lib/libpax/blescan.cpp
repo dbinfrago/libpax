@@ -130,8 +130,8 @@ static void hci_cmd_send_ble_set_adv_param(void) {
   uint16_t adv_intv_min = 0x100;
   uint16_t adv_intv_max = 0x100;
 
-  /* Connectable undirected advertising (ADV_IND). */
-  uint8_t adv_type = 0;
+  /* not connectable but scannable undirected advertising (ADV_SCAN_IND). */
+  uint8_t adv_type = 0b0110;
 
   /* Own address is public address. */
   uint8_t own_addr_type = 0;
@@ -157,12 +157,12 @@ static void hci_cmd_send_ble_set_adv_data(void) {
   // ADV EIR payload, see Bluetooth Core Specs, Part A, Example 2.1.2
   //  0x02 - length of this data
   //    0x01 - "Flags"
-  //    0x01 - LE limited discoverable flag set
+  //    0x02 - LE general discoverable flag set
   //  0x03 - length of this data
   //    0xFF - "manufacturer specific data"
   //    0xFF - default vendor id
   //    0xFF
-  uint8_t const adv_data[7] = {0x02, 0x01, 0x01, 0x03, 0xFF, 0xFF, 0xFF};
+  uint8_t const adv_data[7] = {0x02, 0x01, 0x02, 0x03, 0xFF, 0xFF, 0xFF};
   uint8_t const adv_data_len = 7;
   uint16_t sz =
       make_cmd_ble_set_adv_data(hci_cmd_buf, adv_data_len, (uint8_t *)adv_data);
