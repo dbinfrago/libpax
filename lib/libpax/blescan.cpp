@@ -127,7 +127,7 @@ static void hci_cmd_send_ble_adv_start(void) {
 static void hci_cmd_send_ble_set_adv_param(void) {
   /* Minimum and maximum Advertising interval are set in terms of slots. Each
    * slot is of 625 microseconds. */
-  uint16_t adv_intv_min = 0x100;
+  uint16_t adv_intv_min = 0x100;  // 150 ms
   uint16_t adv_intv_max = 0x100;
 
   /* Connectable undirected advertising (ADV_IND). */
@@ -136,9 +136,9 @@ static void hci_cmd_send_ble_set_adv_param(void) {
   /* Own address is public address. */
   uint8_t own_addr_type = 0;
 
-  /* Public Device Address */
+  /* Public Device Address -> unused here */
   uint8_t peer_addr_type = 0;
-  uint8_t peer_addr[6] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85};
+  uint8_t peer_addr[6] = {0};
 
   /* Channel 37, 38 and 39 for advertising. */
   uint8_t adv_chn_map = 0x07;
@@ -156,14 +156,10 @@ static void hci_cmd_send_ble_set_adv_param(void) {
 static void hci_cmd_send_ble_set_adv_data(void) {
   // ADV EIR payload, see Bluetooth Core Specs, Part A, Example 2.1.2
   //  0x02 - length of this data
-  //    0x01 - "Flags"
-  //    0x02 - LE general discoverable flag set
-  //  0x03 - length of this data
-  //    0xFF - "manufacturer specific data"
-  //    0xFF - default vendor id
-  //    0xFF
-  uint8_t const adv_data[7] = {0x02, 0x01, 0x02, 0x03, 0xFF, 0xFF, 0xFF};
-  uint8_t const adv_data_len = 7;
+  //    0x01 - Flags
+  //    0b00000110 -LE General Discoverable Mode + BR/EDR Not Supported
+  uint8_t const adv_data[3] = {0x02, 0x01, 0b00000110};
+  uint8_t const adv_data_len = 3;
   uint16_t sz =
       make_cmd_ble_set_adv_data(hci_cmd_buf, adv_data_len, (uint8_t *)adv_data);
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
