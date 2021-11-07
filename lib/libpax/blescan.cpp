@@ -4,10 +4,6 @@
 #include "blescan.h"
 #include "libpax.h"
 
-#ifndef BLEADVERTISING
-#define BLEADVERTISING 0
-#endif
-
 #ifndef BLESCANWINDOW
 #define BLESCANWINDOW 80  // [milliseconds]
 #endif
@@ -116,56 +112,6 @@ static void hci_cmd_send_ble_scan_start(void) {
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
   ESP_LOGI(TAG, "BLE Scanning started..");
 }
-
-#if (BLEADVERTISING)
-static void hci_cmd_send_ble_adv_start(void) {
-  uint16_t sz = make_cmd_ble_set_adv_enable(hci_cmd_buf, 1);
-  esp_vhci_host_send_packet(hci_cmd_buf, sz);
-  ESP_LOGI(TAG, "BLE Advertising started..");
-}
-
-static void hci_cmd_send_ble_set_adv_param(void) {
-  /* Minimum and maximum Advertising interval are set in terms of slots. Each
-   * slot is of 625 microseconds. */
-  uint16_t adv_intv_min = 0x100;  // 150 ms
-  uint16_t adv_intv_max = 0x100;
-
-  /* Connectable undirected advertising (ADV_IND). */
-  uint8_t adv_type = 0;
-
-  /* Own address is public address. */
-  uint8_t own_addr_type = 0;
-
-  /* Public Device Address -> unused here */
-  uint8_t peer_addr_type = 0;
-  uint8_t peer_addr[6] = {0};
-
-  /* Channel 37, 38 and 39 for advertising. */
-  uint8_t adv_chn_map = 0x07;
-
-  /* Process scan and connection requests from all devices (i.e., the White List
-   * is not in use). */
-  uint8_t adv_filter_policy = 0;
-
-  uint16_t sz = make_cmd_ble_set_adv_param(
-      hci_cmd_buf, adv_intv_min, adv_intv_max, adv_type, own_addr_type,
-      peer_addr_type, peer_addr, adv_chn_map, adv_filter_policy);
-  esp_vhci_host_send_packet(hci_cmd_buf, sz);
-}
-
-static void hci_cmd_send_ble_set_adv_data(void) {
-  // ADV EIR payload, see Bluetooth Core Specs, Part A, Example 2.1.2
-  //  0x02 - length of this data
-  //    0x01 - Flags
-  //    0b00000110 -LE General Discoverable Mode + BR/EDR Not Supported
-  uint8_t const adv_data[3] = {0x02, 0x01, 0b00000110};
-  uint8_t const adv_data_len = 3;
-  uint16_t sz =
-      make_cmd_ble_set_adv_data(hci_cmd_buf, adv_data_len, (uint8_t *)adv_data);
-  esp_vhci_host_send_packet(hci_cmd_buf, sz);
-  ESP_LOGI(TAG, "Starting BLE advertising");
-}
-#endif
 
 void hci_evt_process(void *pvParameters) {
   host_rcv_data_t *rcv_data =
@@ -293,36 +239,16 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
             ++cmd_cnt;
             break;
 
-#if (BLEADVERTISING)
-          // setup undirected advertising, see BT 5.0 specs Vol 6, Part D, 3.1
-          case 2:
-            hci_cmd_send_ble_set_adv_param();
-            ++cmd_cnt;
-            break;
-          case 3:
-            hci_cmd_send_ble_set_adv_data();
-            ++cmd_cnt;
-            break;
-          case 4:
-            hci_cmd_send_ble_adv_start();
-            ++cmd_cnt;
-            break;
-#else
-        case 2:
-          cmd_cnt = 5;
-          break;
-#endif
-
           // setup passive scanning, see BT 5.0 specs Vol 6, Part D, 4.1
-          case 5:
+          case 2:
             hci_cmd_send_ble_scan_params();
             ++cmd_cnt;
             break;
-          case 6:
+          case 3:
             hci_cmd_send_ble_scan_start();
             ++cmd_cnt;
             break;
-
+            
           // all commands done
           default:
             continue_commands = 0;
