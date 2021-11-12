@@ -2,30 +2,11 @@
 #define _LIBPAX_H
 
 #include "libpax_api.h"
-
-#ifdef LIBPAX_ESPIDF
-// #include "esp_partition.h"
-#else
-#include <Arduino.h>
-#endif
-
-// #include <iostream>
-
-// #include <string.h>
-// #include "freertos/FreeRTOS.h"
 #include "globals.h"
-// #include "esp_int_wdt.h"
-// #include "esp_task_wdt.h"
 #include "wifiscan.h"
 
-// #define PARTITION_APP_TEST 1
-//#define PARTITION_APP_CP 1
-// #define PARTITION_API_TEST 1
-// #define SPI_MAIN 1
-// #define WATCHDOG_TEST 1
-
-#define CONFIG_MAJOR_VERSION 0
-#define CONFIG_MINOR_VERSION 1
+#define CONFIG_MAJOR_VERSION 1
+#define CONFIG_MINOR_VERSION 0
 
 /*
  Memory payload structure for persiting configurations
@@ -39,7 +20,7 @@ struct libpax_config_storage_t {
     // Added for structure alignment
     uint8_t pad;
      // reserved for future use
-    uint8_t reserved_end[36];             
+    uint8_t reserved_end[25];             
     uint8_t checksum[4]; 
 };
 

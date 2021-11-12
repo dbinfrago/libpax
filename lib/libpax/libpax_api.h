@@ -7,10 +7,6 @@
 // #define LIBPAX_WIFI // enables WiFi sniffing features in build 
 // #define LIBPAX_BLE  // enables BLE sniffing features in build
 
-#ifndef LIBPAX_MAX_SIZE
-#define LIBPAX_MAX_SIZE 1000
-#endif
-
 #define WIFI_CHANNEL_ALL    0b1111111111111
 #define WIFI_CHANNEL_1      0b0000000000001
 #define WIFI_CHANNEL_2      0b0000000000010
@@ -37,8 +33,8 @@ struct libpax_config_t {
     uint8_t wificounter;                    // set to 0 if you do not want to install the WiFi sniffer
     uint8_t wifi_my_country;                // e.g 0 = "EU", etc. select locale for WiFi RF settings
     uint16_t wifi_channel_switch_interval;  // [seconds/100] -> 0,5 sec.
-    int8_t wifi_rssi_threshold;             // Filter for how strong the signal should be to be counted
-
+    int wifi_rssi_threshold;                // Filter for how strong the wifi signal should be to be counted
+    int ble_rssi_threshold;                 // Filter for how strong the bluetooth signal should be to be counted
     uint8_t blecounter;                     // set to 0 if you do not want to install the BLE sniffer
     uint32_t blescantime;                   // [seconds] scan duration, 0 means infinite [default]
     uint16_t blescanwindow;                 // [milliseconds] scan window, see below, 3 ... 10240, default 80ms
@@ -55,12 +51,12 @@ struct count_payload_t {
 
 /**
  *   Must be called before use of the lib. Initialze a callback the payload paxcount is written back too.
- *   @param[in] callback Callback which is called every pax_report_interval to inform on current pax
+ *   @param[in] callback Callback which is called every pax_report_interval_sec to inform on current pax
  *   @param[out] memory location for pax count. Updated directly before callback is called
- *   @param[in] pax_report_interval defines interval in ms between a pax count callback.
+ *   @param[in] pax_report_interval_sec defines interval in s between a pax count callback.
  *   @param[in] countermode avalible modes TBD
 */
-int libpax_counter_init(void (*callback)(void), struct count_payload_t* current_count, uint16_t pax_report_interval, int countermode);
+int libpax_counter_init(void (*callback)(void), struct count_payload_t* current_count, uint16_t pax_report_interval_sec, int countermode);
 
 /**
  *   Starts hardware wifi layer and counting of pax

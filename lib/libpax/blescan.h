@@ -3,14 +3,18 @@
 
 #include "globals.h"
 
-// Bluetooth specific includes
+#include <stdio.h>
+#include <string.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <nvs_flash.h>
 #include <esp_bt.h>
-#include <esp_bt_main.h>
-#include <esp_gap_ble_api.h>
-#include <esp_blufi_api.h> // needed for BLE_ADDR types, do not remove
-#include <esp_coexist.h>
+#include <esp_log.h>
+#include <bt_hci_common.h>
 
 void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval);
 void stop_BLE_scan(void);
+void set_BLE_rssi_filter(int set_rssi_threshold);
 
 #endif

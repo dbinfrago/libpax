@@ -1,322 +1,291 @@
-/*
-LICENSE
-
-Copyright  2020      Deutsche Bahn Station&Service AG
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-
-This file is based of the ESP32-Paxcounter:
-
- * Copyright  2018-2020 Oliver Brandmueller <ob@sysadm.in>
- * Copyright  2018-2020 Klaus Wilting <verkehrsrot@arcor.de>
- * https://github.com/cyberman54/ESP32-Paxcounter
- * https://github.com/cyberman54/ESP32-Paxcounter/blob/30731f5c0ce5396fdbcc0d5147481a5c69e15bff/src/blecsan.cpp
-
-Which in turn is based of nkolban's esp32 snippets:
-
-  https://github.com/nkolban/esp32-snippets/tree/master/BLE/scanner
-
-*/
- 
+// see Bluetooth Specification v5.0
+// e.g. https://www.mouser.it/pdfdocs/bluetooth-Core-v50.pdf
 
 #include "blescan.h"
 #include "libpax.h"
 
-#define BT_BD_ADDR_HEX(addr)                                                   \
-  addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]
+#ifndef BLESCANWINDOW
+#define BLESCANWINDOW 80  // [milliseconds]
+#endif
+
+#ifndef BLESCANINTERVAL
+#define BLESCANINTERVAL 80  // [illiseconds]
+#endif
 
 // local Tag for logging
 static const char TAG[] = "bluetooth";
 int initialized_ble = 0;
-uint16_t used_blescantime = 0;
+int ble_rssi_threshold = 0;
 
-#ifdef VERBOSE
-const char *bt_addr_t_to_string(esp_ble_addr_type_t type) {
-  switch (type) {
-  case BLE_ADDR_TYPE_PUBLIC:
-    return "BLE_ADDR_TYPE_PUBLIC";
-  case BLE_ADDR_TYPE_RANDOM:
-    return "BLE_ADDR_TYPE_RANDOM";
-  case BLE_ADDR_TYPE_RPA_PUBLIC:
-    return "BLE_ADDR_TYPE_RPA_PUBLIC";
-  case BLE_ADDR_TYPE_RPA_RANDOM:
-    return "BLE_ADDR_TYPE_RPA_RANDOM";
-  default:
-    return "Unknown addr_t";
-  }
-} // bt_addr_t_to_string
+typedef struct {
+  uint8_t *q_data;
+  uint16_t q_data_len;
+} host_rcv_data_t;
 
-const char *btsig_gap_type(uint32_t gap_type) {
-  switch (gap_type) {
-  case 0x01:
-    return "Flags";
-  case 0x02:
-    return "Incomplete List of 16-bit Service Class UUIDs";
-  case 0x03:
-    return "Complete List of 16-bit Service Class UUIDs";
-  case 0x04:
-    return "Incomplete List of 32-bit Service Class UUIDs";
-  case 0x05:
-    return "Complete List of 32-bit Service Class UUIDs";
-  case 0x06:
-    return "Incomplete List of 128-bit Service Class UUIDs";
-  case 0x07:
-    return "Complete List of 128-bit Service Class UUIDs";
-  case 0x08:
-    return "Shortened Local Name";
-  case 0x09:
-    return "Complete Local Name";
-  case 0x0A:
-    return "Tx Power Level";
-  case 0x0D:
-    return "Class of Device";
-  case 0x0E:
-    return "Simple Pairing Hash C/C-192";
-  case 0x0F:
-    return "Simple Pairing Randomizer R/R-192";
-  case 0x10:
-    return "Device ID/Security Manager TK Value";
-  case 0x11:
-    return "Security Manager Out of Band Flags";
-  case 0x12:
-    return "Slave Connection Interval Range";
-  case 0x14:
-    return "List of 16-bit Service Solicitation UUIDs";
-  case 0x1F:
-    return "List of 32-bit Service Solicitation UUIDs";
-  case 0x15:
-    return "List of 128-bit Service Solicitation UUIDs";
-  case 0x16:
-    return "Service Data - 16-bit UUID";
-  case 0x20:
-    return "Service Data - 32-bit UUID";
-  case 0x21:
-    return "Service Data - 128-bit UUID";
-  case 0x22:
-    return "LE Secure Connections Confirmation Value";
-  case 0x23:
-    return "LE Secure Connections Random Value";
-  case 0x24:
-    return "URI";
-  case 0x25:
-    return "Indoor Positioning";
-  case 0x26:
-    return "Transport Discovery Data";
-  case 0x17:
-    return "Public Target Address";
-  case 0x18:
-    return "Random Target Address";
-  case 0x19:
-    return "Appearance";
-  case 0x1A:
-    return "Advertising Interval";
-  case 0x1B:
-    return "LE Bluetooth Device Address";
-  case 0x1C:
-    return "LE Role";
-  case 0x1D:
-    return "Simple Pairing Hash C-256";
-  case 0x1E:
-    return "Simple Pairing Randomizer R-256";
-  case 0x3D:
-    return "3D Information Data";
-  case 0xFF:
-    return "Manufacturer Specific Data";
+static uint8_t hci_cmd_buf[128];
 
-  default:
-    return "Unknown type";
-  }
-} // btsig_gap_type
-#endif
+static QueueHandle_t adv_queue;
+static TaskHandle_t hci_eventprocessor;
 
-// using IRAM_ATTR here to speed up callback function
-IRAM_ATTR void gap_callback_handler(esp_gap_ble_cb_event_t event,
-                                    esp_ble_gap_cb_param_t *param) {
+/*
+ * @brief: BT controller callback function, used to notify the upper layer that
+ *         controller is ready to receive command
+ */
+static void controller_rcv_pkt_ready(void) {
+  // nothing to do here
+}
 
-  esp_ble_gap_cb_param_t *p = (esp_ble_gap_cb_param_t *)param;
-
-#ifdef VERBOSE
-  ESP_LOGV(TAG, "BT payload rcvd -> type: 0x%.2x -> %s", *p->scan_rst.ble_adv,
-           btsig_gap_type(*p->scan_rst.ble_adv));
-#endif
-
-  switch (event) {
-  case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
-    // restart scan
-    ESP_ERROR_CHECK(esp_ble_gap_start_scanning(used_blescantime));
-    break;
-
-  case ESP_GAP_BLE_SCAN_RESULT_EVT:
-    // evaluate scan results
-    if (p->scan_rst.search_evt ==
-        ESP_GAP_SEARCH_INQ_CMPL_EVT) // Inquiry complete, scan is done
-    {                                // restart scan
-      ESP_ERROR_CHECK(esp_ble_gap_start_scanning(used_blescantime));
-      return;
+/*
+ * @brief: BT controller callback function to transfer data packet to
+ *         the host
+ */
+static int host_rcv_pkt(uint8_t *data, uint16_t len) {
+  host_rcv_data_t send_data;
+  uint8_t *data_pkt;
+  /* Check second byte for HCI event. If event opcode is 0x0e, the event is
+   * HCI Command Complete event. Since we have received "0x0e" event, we can
+   * check for byte 4 for command opcode and byte 6 for it's return status. */
+  if (data[1] == 0x0e) {
+    if (data[6] != 0) {
+      ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", data[4],
+               data[6]);
+      return ESP_FAIL;
     }
+  }
 
-    if (p->scan_rst.search_evt ==
-        ESP_GAP_SEARCH_INQ_RES_EVT) // Inquiry result for a peer device
-    {                               // evaluate sniffed packet
-#ifdef VERBOSE
-      ESP_LOGV(TAG, "Device address (bda): %02x:%02x:%02x:%02x:%02x:%02x",
-               BT_BD_ADDR_HEX(p->scan_rst.bda));
-      ESP_LOGV(TAG, "Addr_type           : %s",
-               bt_addr_t_to_string(p->scan_rst.ble_addr_type));
-      ESP_LOGV(TAG, "RSSI                : %d", p->scan_rst.rssi);
-#endif
-
-#if (VENDORFILTER)
-      if ((p->scan_rst.ble_addr_type == BLE_ADDR_TYPE_RANDOM) ||
-          (p->scan_rst.ble_addr_type == BLE_ADDR_TYPE_RPA_RANDOM)) {
-#ifdef VERBOSE
-        ESP_LOGV(TAG, "BT device filtered");
-#endif
-        break;
-      }
-#endif
-
-      // add this device mac to processing queue
-
-      mac_add((uint8_t *)p->scan_rst.bda, MAC_SNIFF_BLE);
-
-      /* to be improved in vendorfilter if:
-      // you can search for elements in the payload using the
-      // function esp_ble_resolve_adv_data()
-      //
-      // Like this, that scans for the "Complete name" (looking inside the
-      payload buffer)
-      // uint8_t len;
-      // uint8_t *data = esp_ble_resolve_adv_data(p->scan_rst.ble_adv,
-      ESP_BLE_AD_TYPE_NAME_CMPL, &len);
-
-      filter BLE devices using their advertisements to get filter alternative
-      to vendor OUI if vendorfiltering is on, we ...
-      - want to count: mobile phones and tablets
-      - don't want to count: beacons, peripherals (earphones, headsets,
-      printers), cars and machines see
-      https://github.com/nkolban/ESP32_BLE_Arduino/blob/master/src/BLEAdvertisedDevice.cpp
-
-      http://www.libelium.com/products/meshlium/smartphone-detection/
-
-      https://www.question-defense.com/2013/01/12/bluetooth-cod-bluetooth-class-of-deviceclass-of-service-explained
-
-      https://www.bluetooth.com/specifications/assigned-numbers/baseband
-
-      "The Class of Device (CoD) in case of Bluetooth which allows us to
-      differentiate the type of device (smartphone, handsfree, computer,
-      LAN/network AP). With this parameter we can differentiate among
-      pedestrians and vehicles."
-
-      */
-
-    } // evaluate sniffed packet
-    break;
-
-  default:
-    break;
-  } // switch
-} // gap_callback_handler
-
-esp_err_t register_ble_callback(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval) {
-  ESP_LOGI(TAG, "Register GAP callback");
-
-  // set blescantime to be used in callback
-  used_blescantime = blescantime;
-
-  // This function is called when gap event occurs, such as scan result.
-  // register the scan callback function to the gap module
-  ESP_ERROR_CHECK(esp_ble_gap_register_callback(&gap_callback_handler));
-
-  static esp_ble_scan_params_t ble_scan_params = {
-    .scan_type = BLE_SCAN_TYPE_PASSIVE,
-    .own_addr_type = BLE_ADDR_TYPE_RANDOM,
-
-#if (VENDORFILTER)
-    .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_WLIST_PRA_DIR,
-  // ADV_IND, ADV_NONCONN_IND, ADV_SCAN_IND packets are used for broadcasting
-  // data in broadcast applications (e.g., Beacons), so we don't want them in
-  // vendorfilter mode
-#else
-    .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
-#endif
-
-    .scan_interval = 0,
-    .scan_window = 0,
-
-    .scan_duplicate = BLE_SCAN_DUPLICATE_DISABLE // Report each packet - no de-duplication.
-  };
-
-  ble_scan_params.scan_interval = (uint16_t)(blescantime * 10 / 0.625); // Time = N * 0.625 msec
-  ble_scan_params.scan_window = (uint16_t)(blescanwindow / 0.625); // Time = N * 0.625 msec
-
-  ESP_LOGI(TAG, "Set GAP scan parameters");
-
-  // This function is called to set scan parameters.
-  ESP_ERROR_CHECK(esp_ble_gap_set_scan_params(&ble_scan_params));
-
+  data_pkt = (uint8_t *)malloc(sizeof(uint8_t) * len);
+  if (data_pkt == NULL) {
+    ESP_LOGE(TAG, "Malloc data_pkt failed!");
+    return ESP_FAIL;
+  }
+  memcpy(data_pkt, data, len);
+  send_data.q_data = data_pkt;
+  send_data.q_data_len = len;
+  if (xQueueSend(adv_queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
+    ESP_LOGD(TAG, "Failed to enqueue advertising report. Queue full.");
+    /* If data sent successfully, then free the pointer in `xQueueReceive'
+     * after processing it. Or else if enqueue in not successful, free it
+     * here. */
+    free(data_pkt);
+  }
   return ESP_OK;
+}
 
-} // register_ble_callback
+static esp_vhci_host_callback_t vhci_host_cb = {controller_rcv_pkt_ready,
+                                                host_rcv_pkt};
 
-void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow, uint16_t blescaninterval) {
+static void hci_cmd_send_reset(void) {
+  uint16_t sz = make_cmd_reset(hci_cmd_buf);
+  esp_vhci_host_send_packet(hci_cmd_buf, sz);
+}
+
+static void hci_cmd_send_set_evt_mask(void) {
+  /* Set bit 61 in event mask to enable LE Meta events. */
+  uint8_t evt_mask[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20};
+  uint16_t sz = make_cmd_set_evt_mask(hci_cmd_buf, evt_mask);
+  esp_vhci_host_send_packet(hci_cmd_buf, sz);
+}
+
+static void hci_cmd_send_ble_scan_params(void) {
+  /* Set scan type to 0x01 for active scanning and 0x00 for passive scanning. */
+  // see see # Bluetooth Specification v5.0, Vol 6, Part B, sec 4.4.3.1
+  uint8_t scan_type = 0x00;  // passive scan, since we don't need / want answers
+
+  /* Scan window and Scan interval are set in terms of number of slots. Each
+   * slot is of 625 microseconds. */
+  uint16_t scan_interval = BLESCANINTERVAL * 1000 / 625;
+  uint16_t scan_window = BLESCANWINDOW * 1000 / 625;
+  uint8_t own_addr_type = 0x00; /* Public Device Address (default). */
+  uint8_t filter_policy = 0x00; /* Accept all packets excpet directed
+                                   advertising packets (default). */
+  uint16_t sz =
+      make_cmd_ble_set_scan_params(hci_cmd_buf, scan_type, scan_interval,
+                                   scan_window, own_addr_type, filter_policy);
+  esp_vhci_host_send_packet(hci_cmd_buf, sz);
+}
+
+static void hci_cmd_send_ble_scan_start(void) {
+  uint8_t scan_enable = 0x01;       /* Scanning enabled. */
+  uint8_t filter_duplicates = 0x00; /* Duplicate filtering disabled. */
+  uint16_t sz =
+      make_cmd_ble_set_scan_enable(hci_cmd_buf, scan_enable, filter_duplicates);
+  esp_vhci_host_send_packet(hci_cmd_buf, sz);
+  ESP_LOGI(TAG, "BLE Scanning started..");
+}
+
+void hci_evt_process(void *pvParameters) {
+  host_rcv_data_t *rcv_data =
+      (host_rcv_data_t *)malloc(sizeof(host_rcv_data_t));
+  if (rcv_data == NULL) {
+    ESP_LOGE(TAG, "Malloc rcv_data failed!");
+    return;
+  }
+
+  uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
+  uint16_t data_ptr;
+  short int rssi;
+
+  while (1) {
+    uint8_t *queue_data = NULL, *addr = NULL;
+    total_data_len = 0;
+
+    if (xQueueReceive(adv_queue, rcv_data, portMAX_DELAY) != pdPASS) {
+      ESP_LOGE(TAG, "Queue receive error");
+    } else {
+      // `data_ptr' keeps track of current position in the received data
+      data_ptr = 0;
+      queue_data = rcv_data->q_data;
+
+      // Parsing `data' and copying in various fields
+      // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
+
+      hci_event_opcode = queue_data[++data_ptr];
+      if (hci_event_opcode == LE_META_EVENTS) {
+        // set `data_ptr' to 4th entry, which will point to sub event
+        data_ptr += 2;
+        sub_event = queue_data[data_ptr++];
+        // check if sub event is LE advertising report event
+        if (sub_event == HCI_LE_ADV_REPORT) {
+          // get number of advertising reports
+          num_responses = queue_data[data_ptr++];
+
+          // skip 2 bytes event type and advertising type for every report
+          data_ptr += 2 * num_responses;
+
+          // get BD address in every advertising report and store in
+          // single array of length `6 * num_responses' as each address
+          // will take 6 spaces
+          addr = (uint8_t *)malloc(sizeof(uint8_t) * 6 * num_responses);
+          if (addr == NULL) {
+            ESP_LOGE(TAG, "Malloc addr failed!");
+            goto reset;
+          }
+          for (int i = 0; i < num_responses; i += 1) {
+            for (int j = 0; j < 6; j += 1) {
+              addr[(6 * i) + j] = queue_data[data_ptr++];
+            }
+          }
+
+          // get length of data for each advertising report
+          for (uint8_t i = 0; i < num_responses; i += 1) {
+            total_data_len += queue_data[data_ptr++];
+          }
+
+          // skip all data packets
+          data_ptr += total_data_len;
+
+          // Count each advertising report within rssi threshold
+          for (uint8_t i = 0; i < num_responses; i += 1) {
+            rssi = -(0xFF - queue_data[data_ptr++]);
+            if (ble_rssi_threshold && (rssi < ble_rssi_threshold))
+              continue;  // do not count
+            else
+              mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
+          }
+
+        // freeing all spaces allocated
+        reset:
+          free(addr);
+        }
+      }
+      free(queue_data);
+    }
+    memset(rcv_data, 0, sizeof(host_rcv_data_t));
+  }
+}
+
+void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
+                    uint16_t blescaninterval) {
 #ifdef LIBPAX_BLE
   ESP_LOGI(TAG, "Initializing bluetooth scanner ...");
 
-  // Initialize BT controller to allocate task and other resource.
-  #ifdef LIBPAX_ARDUINO
-  if(btStart()) {
-  #endif
-  #ifdef LIBPAX_ESPIDF
-  esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
-  ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
-  #endif
+/* Initialize BT controller to allocate task and other resource. */
+#ifdef LIBPAX_ARDUINO
+  if (btStart()) {
+#endif
+#ifdef LIBPAX_ESPIDF
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
+    ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
+#endif
 
-  ESP_ERROR_CHECK(esp_bluedroid_init());
-  ESP_ERROR_CHECK(esp_bluedroid_enable());
+    /* A queue for storing received HCI packets. */
+    adv_queue = xQueueCreate(30, sizeof(host_rcv_data_t));
+    if (adv_queue == NULL) {
+      ESP_LOGE(TAG, "Queue creation failed\n");
+      return;
+    }
 
-  // Register callback function for capturing bluetooth packets
-  ESP_ERROR_CHECK(register_ble_callback(blescantime, blescanwindow, blescaninterval));
+    /* start HCI event processor task */
+    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
+                            &hci_eventprocessor, 0);
 
-  ESP_LOGI(TAG, "Bluetooth scanner started");
-  initialized_ble = 1;
-  #ifdef LIBPAX_ARDUINO
+    esp_vhci_host_register_callback(&vhci_host_cb);
+
+    /* start BLE advertising and scanning */
+    bool continue_commands = 1;
+    int cmd_cnt = 0;
+
+    while (continue_commands) {
+      if (continue_commands && esp_vhci_host_check_send_available()) {
+        switch (cmd_cnt) {
+          // send initialize commands
+          case 0:
+            hci_cmd_send_reset();
+            ++cmd_cnt;
+            break;
+          case 1:
+            hci_cmd_send_set_evt_mask();
+            ++cmd_cnt;
+            break;
+
+          // setup passive scanning, see BT 5.0 specs Vol 6, Part D, 4.1
+          case 2:
+            hci_cmd_send_ble_scan_params();
+            ++cmd_cnt;
+            break;
+          case 3:
+            hci_cmd_send_ble_scan_start();
+            ++cmd_cnt;
+            break;
+            
+          // all commands done
+          default:
+            continue_commands = 0;
+            break;
+        }
+      }
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    ESP_LOGI(TAG, "Bluetooth scanner started");
+    initialized_ble = 1;
+#ifdef LIBPAX_ARDUINO
   } else {
     ESP_LOGE(TAG, "Failed on Bluetooth scanner started");
   }
-  #endif
 #endif
-} // start_BLEscan
+#endif
+}  // start_BLEscan
 
 void stop_BLE_scan(void) {
 #ifdef LIBPAX_BLE
   if (initialized_ble) {
     ESP_LOGI(TAG, "Shutting down bluetooth scanner ...");
-    ESP_ERROR_CHECK(esp_ble_gap_register_callback(NULL));
-    ESP_ERROR_CHECK(esp_bluedroid_disable());
-    ESP_ERROR_CHECK(esp_bluedroid_deinit());
-    #ifdef LIBPAX_ARDUINO
-    btStop(); // disable bt_controller
-    #endif
-    #ifdef LIBPAX_ESPIDF
+#ifdef LIBPAX_ARDUINO
+    btStop();  // disable bt_controller
+#endif
+#ifdef LIBPAX_ESPIDF
     ESP_ERROR_CHECK(esp_bt_controller_disable());
     ESP_ERROR_CHECK(esp_bt_controller_deinit());
-    #endif
+#endif
     ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_WIFI));
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }
 #endif
-} // stop_BLEscan
+}  // stop_BLEscan
+
+void set_BLE_rssi_filter(int set_rssi_threshold) {
+  ble_rssi_threshold = set_rssi_threshold;
+}

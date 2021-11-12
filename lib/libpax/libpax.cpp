@@ -23,7 +23,14 @@ limitations under the License.
 #include "esp_log.h"
 #include <string.h>
 
-uint16_t seen_ids [LIBPAX_MAX_SIZE];
+typedef uint32_t bitmap_t;
+enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
+#define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
+#define BIT_OFFSET(b) ((b) % BITS_PER_WORD)
+#define LIBPAX_MAX_SIZE 0xFFFF  // full enumeration of uint16_t
+#define LIBPAX_MAP_SIZE (LIBPAX_MAX_SIZE / BITS_PER_WORD)
+
+bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];
 int seen_ids_count = 0;
 
 uint16_t volatile macs_wifi = 0;
@@ -31,41 +38,30 @@ uint16_t volatile macs_ble = 0;
 
 uint8_t volatile channel = 0;  // channel rotation counter
 
+void set_id(bitmap_t *bitmap, uint16_t id) {
+  bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));
+}
+
+int get_id(bitmap_t *bitmap, uint16_t id) {
+  bitmap_t bit = bitmap[WORD_OFFSET(id)] & ((bitmap_t)1 << BIT_OFFSET(id));
+  return bit != 0;
+}
+
 /** remember given id
  * returns 1 if id is new, 0 if already seen this is since last reset
  */
 int add_to_bucket(uint16_t id) {
-  if(seen_ids_count == LIBPAX_MAX_SIZE) {
-    return 0;
-  }
-
-  int pos = id % LIBPAX_MAX_SIZE;
-  int start_pos = pos;
-  while(1) {
-    if(seen_ids[pos] == id) {
-      return 0;
-    }
-    else if(seen_ids[pos] == 0) {
-      seen_ids[pos] = id;
-      seen_ids_count++;
-      return 1;
-    } else {
-      pos = (pos + 1) % LIBPAX_MAX_SIZE;
-      if(pos == start_pos) {
-        // This should only be impossible to reach. Reaching our start_pos
-        // means we searched didn't find an empty spoint in the bucket.
-        // But there does exist a fast-pass for this therefor this 
-        // should not be reachable and just exists as a fallback to 
-        // avoid beeing stuck in an endless loop.
-        return 0;
-      }
-    }
+  if (get_id(seen_ids_map, id)) {
+    return 0;  // already seen
+  } else {
+    set_id(seen_ids_map, id);
+    seen_ids_count++;
+    return 1;  // new
   }
 }
 
-
 void reset_bucket() {
-  memset(seen_ids, 0, sizeof(seen_ids));
+  memset(seen_ids_map, 0, sizeof(seen_ids_map));
   seen_ids_count = 0;
 }
 
@@ -82,6 +78,9 @@ int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   uint16_t *id;
   // mac addresses are 6 bytes long, we only use the last two bytes
   id = (uint16_t *)(paddr + 4);
+    
+  //ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
+  //         paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
   
   int added = add_to_bucket(*id);
 

@@ -16,10 +16,11 @@ void init() {
   configuration.wifi_channel_map = WIFI_CHANNEL_ALL;
   configuration.wifi_channel_switch_interval = 50;
   configuration.wifi_rssi_threshold = -80;
+  configuration.ble_rssi_threshold = -80;
   libpax_update_config(&configuration);
 
   // internal processing initialization
-  libpax_counter_init(process_count, &count_from_libpax, 10*1000, 1); 
+  libpax_counter_init(process_count, &count_from_libpax, 10, 1); 
   libpax_counter_start();
 }
 

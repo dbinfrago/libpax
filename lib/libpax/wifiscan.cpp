@@ -37,7 +37,7 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
-int rssi_threshold = -80;
+int wifi_rssi_threshold = 0;
 
 // configData_t cfg_pax;
 
@@ -56,8 +56,8 @@ wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type) {
   const wifi_ieee80211_packet_t* ipkt = (wifi_ieee80211_packet_t*)ppkt->payload;
   const wifi_ieee80211_mac_hdr_t* hdr = &ipkt->hdr;
 
-  if ((rssi_threshold) &&
-      (ppkt->rx_ctrl.rssi < rssi_threshold))  // rssi is negative value
+  if ((wifi_rssi_threshold) &&
+      (ppkt->rx_ctrl.rssi < wifi_rssi_threshold))  // rssi is negative value
   {
     return;
   }
@@ -81,7 +81,7 @@ void switchWifiChannel(TimerHandle_t xTimer) {
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
-void set_country(uint8_t cc) {
+void set_wifi_country(uint8_t cc) {
   switch(cc) {
       case 1:
         memcpy(wifi_country.cc, "EU", sizeof("EU"));
@@ -89,12 +89,12 @@ void set_country(uint8_t cc) {
   }
 }
 
-void set_channels(uint16_t set_channels_map) {
+void set_wifi_channels(uint16_t set_channels_map) {
   channels_map = set_channels_map;
 }
 
-void set_rssi_filter(int8_t set_rssi_threshold) {
-  rssi_threshold = set_rssi_threshold;
+void set_wifi_rssi_filter(int set_rssi_threshold) {
+  wifi_rssi_threshold = set_rssi_threshold;
 }
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
