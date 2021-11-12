@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ## [1.0.0] - 2021-09-06
 - Bug fixes
+- Get rid of BLE stack and use low level VHCI to enhance memory usage and drop unused code
+- Cumulated mode available (be careful with your config!)
 
 ## [0.1.3] - 2021-04-05
 ### Removed
