@@ -52,7 +52,7 @@ struct count_payload_t {
 /**
  *   Must be called before use of the lib. Initialze a callback the payload paxcount is written back too.
  *   @param[in] callback Callback which is called every pax_report_interval_sec to inform on current pax
- *   @param[out] memory location for pax count. Updated directly before callback is called
+ *   @param[out] current_count memory for pax count. Updated directly before callback is called
  *   @param[in] pax_report_interval_sec defines interval in s between a pax count callback.
  *   @param[in] countermode avalible modes TBD
 */
