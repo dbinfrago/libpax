@@ -35,10 +35,10 @@ void (*report_callback)(void);
 struct count_payload_t* pCurrent_count;
 int counter_mode;
 
-void fill_counter(struct count_payload_t* count) {
-  count->wifi_count = libpax_wifi_counter_count();
-  count->ble_count = libpax_ble_counter_count();
-  count->pax = pCurrent_count->wifi_count + pCurrent_count->ble_count;
+void fill_counter(struct count_payload_t* pCount) {
+  pCount->wifi_count = libpax_wifi_counter_count();
+  pCount->ble_count = libpax_ble_counter_count();
+  pCount->pax = pCount->wifi_count + pCount->ble_count;
 }
 
 void libpax_counter_reset() {
