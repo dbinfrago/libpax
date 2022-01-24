@@ -65,14 +65,9 @@ void reset_bucket() {
   seen_ids_count = 0;
 }
 
-int libpax_wifi_counter_count() {
-  return macs_wifi;
-}
+int libpax_wifi_counter_count() { return macs_wifi; }
 
-int libpax_ble_counter_count() {
-  return macs_ble;
-}
-
+int libpax_ble_counter_count() { return macs_ble; }
 
 int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   uint16_t *id;
@@ -81,6 +76,9 @@ int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
     
   //ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
   //         paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
+    
+  // if it is NOT a locally administered ("random") mac, we don't count it
+  if (!(paddr[0] & 0b10)) return false;
   
   int added = add_to_bucket(*id);
 
