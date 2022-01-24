@@ -152,16 +152,18 @@ void hci_evt_process(void *pvParameters) {
           // skip 2 bytes event type and advertising type for every report
           data_ptr += 2 * num_responses;
 
-          // get BD address in every advertising report and store in
-          // single array of length `6 * num_responses' as each address
-          // will take 6 spaces
+          // get device address in every advertising report and
+          // store in array of length `6 * num_responses' as each record
+          // contains 6 octets
+          // -> note: BD addresses are stored in little endian format!
+          // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 5.2
           addr = (uint8_t *)malloc(sizeof(uint8_t) * 6 * num_responses);
           if (addr == NULL) {
             ESP_LOGE(TAG, "Malloc addr failed!");
             goto reset;
           }
           for (int i = 0; i < num_responses; i += 1) {
-            for (int j = 0; j < 6; j += 1) {
+            for (int j = 5; j >= 0; j -= 1) {
               addr[(6 * i) + j] = queue_data[data_ptr++];
             }
           }
@@ -178,12 +180,9 @@ void hci_evt_process(void *pvParameters) {
           for (uint8_t i = 0; i < num_responses; i += 1) {
             rssi = -(0xFF - queue_data[data_ptr++]);
             if (ble_rssi_threshold && (rssi < ble_rssi_threshold))
-              continue;  // do not count
+              continue;  // do not count weak signal mac
             else {
-              int universal_bit = (addr + 6 * i) & 0b10;
-              if(!universal_bit) 
-                continue;
-              mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
+              mac_add(addr + 6 * i, MAC_SNIFF_BLE);
             }
           }
 
