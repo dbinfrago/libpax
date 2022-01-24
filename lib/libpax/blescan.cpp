@@ -179,8 +179,12 @@ void hci_evt_process(void *pvParameters) {
             rssi = -(0xFF - queue_data[data_ptr++]);
             if (ble_rssi_threshold && (rssi < ble_rssi_threshold))
               continue;  // do not count
-            else
+            else {
+              int universal_bit = (addr + 6 * i) & 0b10;
+              if(!universal_bit) 
+                continue;
               mac_add((uint8_t *)(addr + 6 * i), MAC_SNIFF_BLE);
+            }
           }
 
         // freeing all spaces allocated
