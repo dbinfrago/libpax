@@ -30,7 +30,7 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 #define LIBPAX_MAX_SIZE 0xFFFF  // full enumeration of uint16_t
 #define LIBPAX_MAP_SIZE (LIBPAX_MAX_SIZE / BITS_PER_WORD)
 
-bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];
+DRAM_ATTR bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];
 int seen_ids_count = 0;
 
 uint16_t volatile macs_wifi = 0;
@@ -38,11 +38,11 @@ uint16_t volatile macs_ble = 0;
 
 uint8_t volatile channel = 0;  // channel rotation counter
 
-void set_id(bitmap_t *bitmap, uint16_t id) {
+IRAM_ATTR void set_id(bitmap_t *bitmap, uint16_t id) {
   bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));
 }
 
-int get_id(bitmap_t *bitmap, uint16_t id) {
+IRAM_ATTR int get_id(bitmap_t *bitmap, uint16_t id) {
   bitmap_t bit = bitmap[WORD_OFFSET(id)] & ((bitmap_t)1 << BIT_OFFSET(id));
   return bit != 0;
 }
@@ -50,7 +50,7 @@ int get_id(bitmap_t *bitmap, uint16_t id) {
 /** remember given id
  * returns 1 if id is new, 0 if already seen this is since last reset
  */
-int add_to_bucket(uint16_t id) {
+IRAM_ATTR int add_to_bucket(uint16_t id) {
   if (get_id(seen_ids_map, id)) {
     return 0;  // already seen
   } else {
@@ -69,7 +69,7 @@ int libpax_wifi_counter_count() { return macs_wifi; }
 
 int libpax_ble_counter_count() { return macs_ble; }
 
-int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
+IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   uint16_t *id;
   // mac addresses are 6 bytes long, we only use the last two bytes
   id = (uint16_t *)(paddr + 4);

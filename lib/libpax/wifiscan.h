@@ -18,16 +18,11 @@ typedef struct {
   uint8_t payload[0];  // network data ended with 4 bytes csum (CRC32)
 } wifi_ieee80211_packet_t;
 
-// extern const wifi_ieee80211_mac_hdr_t *hdr;
-
 void set_wifi_country(uint8_t country_code);
 void set_wifi_channels(uint16_t channels_map);
 void set_wifi_rssi_filter(int set_rssi_threshold);
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval);
 void wifi_sniffer_stop();
-
-extern int run_count;
-extern int timeback_delta;
 
 #endif

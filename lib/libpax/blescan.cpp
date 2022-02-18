@@ -55,7 +55,7 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
 
   data_pkt = (uint8_t *)malloc(sizeof(uint8_t) * len);
   if (data_pkt == NULL) {
-    ESP_LOGE(TAG, "Malloc data_pkt failed!");
+    ESP_LOGE(TAG, "Malloc data_pkt failed");
     return ESP_FAIL;
   }
   memcpy(data_pkt, data, len);
@@ -110,14 +110,14 @@ static void hci_cmd_send_ble_scan_start(void) {
   uint16_t sz =
       make_cmd_ble_set_scan_enable(hci_cmd_buf, scan_enable, filter_duplicates);
   esp_vhci_host_send_packet(hci_cmd_buf, sz);
-  ESP_LOGI(TAG, "BLE Scanning started..");
+  ESP_LOGI(TAG, "BLE Scanning started");
 }
 
 void hci_evt_process(void *pvParameters) {
   host_rcv_data_t *rcv_data =
       (host_rcv_data_t *)malloc(sizeof(host_rcv_data_t));
   if (rcv_data == NULL) {
-    ESP_LOGE(TAG, "Malloc rcv_data failed!");
+    ESP_LOGE(TAG, "Malloc rcv_data failed");
     return;
   }
 
@@ -159,7 +159,7 @@ void hci_evt_process(void *pvParameters) {
           // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 5.2
           addr = (uint8_t *)malloc(sizeof(uint8_t) * 6 * num_responses);
           if (addr == NULL) {
-            ESP_LOGE(TAG, "Malloc addr failed!");
+            ESP_LOGE(TAG, "Malloc addr failed");
             goto reset;
           }
           for (int i = 0; i < num_responses; i += 1) {
@@ -215,11 +215,11 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     /* A queue for storing received HCI packets. */
     adv_queue = xQueueCreate(30, sizeof(host_rcv_data_t));
     if (adv_queue == NULL) {
-      ESP_LOGE(TAG, "Queue creation failed\n");
+      ESP_LOGE(TAG, "Queue creation failed");
       return;
     }
 
-    /* start HCI event processor task */
+    /* start HCI event processor task with prio 1 on core 0 */
     xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
                             &hci_eventprocessor, 0);
 
