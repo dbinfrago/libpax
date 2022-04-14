@@ -39,10 +39,8 @@ int libpax_ble_counter_count();
 void libpax_counter_reset();
 
 void reset_bucket();
-int mac_add(uint8_t *paddr, snifftype_t sniff_type);
-int add_to_bucket(uint16_t id);
-
-extern void IRAM_ATTR libpax_wifi_counter_add_mac_IRAM(uint32_t mac_input);
+IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type);
+IRAM_ATTR int add_to_bucket(uint16_t id);
 
 void wifiDefaultConfig();
 #endif

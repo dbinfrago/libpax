@@ -10,7 +10,7 @@
 */
 void test_mac_add_bytes() {
   libpax_counter_reset();
-  uint8_t test_mac_addr[6] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+  uint8_t test_mac_addr[6] = {0x0b, 0x01, 0x0, 0x0, 0x0, 0x0};
   test_mac_addr[4] = 0x01;
   test_mac_addr[5] = 0x01;
   mac_add(test_mac_addr, MAC_SNIFF_WIFI);
@@ -38,6 +38,8 @@ void test_mac_add_bytes() {
 void test_collision_add() {
   libpax_counter_reset();
   uint8_t test_mac_addr[6];
+  test_mac_addr[0] = 0x0b;
+  test_mac_addr[1] = 0x10;
 
   uint16_t *test_mac_addr_p = (uint16_t *)(test_mac_addr + 4);
   *test_mac_addr_p = 1;
@@ -66,7 +68,7 @@ void test_counter_reset() {
   libpax_counter_reset();
   TEST_ASSERT_EQUAL(0, libpax_wifi_counter_count());
 
-  uint8_t test_mac_addr[6] = {1, 1, 1, 1, 1, 1};
+  uint8_t test_mac_addr[6] = {0x0b, 0x01, 1, 1, 1, 1};
   mac_add(test_mac_addr, MAC_SNIFF_WIFI);
   TEST_ASSERT_EQUAL(1, libpax_wifi_counter_count());
 

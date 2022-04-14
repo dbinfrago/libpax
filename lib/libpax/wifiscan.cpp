@@ -38,8 +38,7 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
 int wifi_rssi_threshold = 0;
-
-// configData_t cfg_pax;
+uint16_t channels_map = WIFI_CHANNEL_ALL;
 
 #define WIFI_CHANNEL_MAX 13
 // default values for country configuration
@@ -58,20 +57,11 @@ wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type) {
 
   if ((wifi_rssi_threshold) &&
       (ppkt->rx_ctrl.rssi < wifi_rssi_threshold))  // rssi is negative value
-  {
-    return;
-  }
-
-  int universal_bit = hdr->addr2[0] & 0b10;
-
-  if(!universal_bit) {
      return;
-  }
-
-  mac_add((uint8_t *)hdr->addr2, MAC_SNIFF_WIFI);
+  else 
+     mac_add((uint8_t *)hdr->addr2, MAC_SNIFF_WIFI);
 }
 
-uint16_t channels_map;
 // Software-timer driven Wifi channel rotation callback function
 void switchWifiChannel(TimerHandle_t xTimer) {
   configASSERT(xTimer);
@@ -125,8 +115,6 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
       esp_wifi_set_promiscuous(true));  // now switch on monitor mode
 
   // setup wifi channel rotation timer
-
-
   if(wifi_channel_switch_interval > 0) {
     WifiChanTimer = xTimerCreate("WifiChannelTimer", pdMS_TO_TICKS(wifi_channel_switch_interval * 10),
                                 pdTRUE, (void*)0, switchWifiChannel);
