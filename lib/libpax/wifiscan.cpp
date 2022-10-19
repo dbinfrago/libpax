@@ -32,8 +32,9 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 #include "globals.h"
 
 #include <string.h>
-#include "wifiscan.h"
 #include "libpax.h"
+#include "wifiscan.h"
+
 
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
@@ -44,33 +45,31 @@ static wifi_country_t country;
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}
 
 // using IRAM_ATTR here to speed up callback function
-static IRAM_ATTR void
-wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type) {
+static IRAM_ATTR void wifi_sniffer_packet_handler(
+    void* buff, wifi_promiscuous_pkt_type_t type) {
   const wifi_promiscuous_pkt_t* ppkt = (wifi_promiscuous_pkt_t*)buff;
   const wifi_ieee80211_packet_t* ipkt = (wifi_ieee80211_packet_t*)ppkt->payload;
   const wifi_ieee80211_mac_hdr_t* hdr = &ipkt->hdr;
 
   if ((wifi_rssi_threshold) &&
       (ppkt->rx_ctrl.rssi < wifi_rssi_threshold))  // rssi is negative value
-     return;
-  else 
-     mac_add((uint8_t *)hdr->addr2, MAC_SNIFF_WIFI);
+    return;
+  else
+    mac_add((uint8_t*)hdr->addr2, MAC_SNIFF_WIFI);
 }
 
 // Software-timer driven Wifi channel rotation callback function
 void switchWifiChannel(TimerHandle_t xTimer) {
   configASSERT(xTimer);
-  do { channel =
-      (channel % country.nchan) + 1;  // rotate channels in bitmap
+  do {
+    channel = (channel % country.nchan) + 1;  // rotate channels in bitmap
   } while (!(channels_map >> (channel - 1) & 1));
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
 void set_wifi_country(const char* country_code) {
-  ESP_ERROR_CHECK(
-      esp_wifi_set_country_code(country_code, true));
-  ESP_ERROR_CHECK(
-      esp_wifi_get_country(&country));
+  ESP_ERROR_CHECK(esp_wifi_set_country_code(country_code, true));
+  ESP_ERROR_CHECK(esp_wifi_get_country(&country));
 }
 
 void set_wifi_channels(uint16_t set_channels_map) {
@@ -82,7 +81,7 @@ void set_wifi_rssi_filter(int set_rssi_threshold) {
 }
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
-  #ifdef LIBPAX_WIFI
+#ifdef LIBPAX_WIFI
   wifi_init_config_t wificfg = WIFI_INIT_CONFIG_DEFAULT();
   wificfg.nvs_enable = 0;         // we don't need any wifi settings from NVRAM
   wificfg.wifi_task_core_id = 0;  // we want wifi task running on core 0
@@ -96,9 +95,6 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
                                           WIFI_PROMIS_FILTER_MASK_DATA};
 
   ESP_ERROR_CHECK(esp_wifi_init(&wificfg));  // configure Wifi with cfg
-  //ESP_ERROR_CHECK(
-  //    esp_wifi_set_storage(WIFI_STORAGE_RAM));  // we don't need NVRAM
-  //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
   ESP_ERROR_CHECK(
       esp_wifi_set_promiscuous_filter(&filter));  // set frame filter
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_sniffer_packet_handler));
@@ -106,21 +102,22 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
       esp_wifi_set_promiscuous(true));  // now switch on monitor mode
 
   // setup wifi channel rotation timer
-  if(wifi_channel_switch_interval > 0) {
-    WifiChanTimer = xTimerCreate("WifiChannelTimer", pdMS_TO_TICKS(wifi_channel_switch_interval * 10),
-                                pdTRUE, (void*)0, switchWifiChannel);
+  if (wifi_channel_switch_interval > 0) {
+    WifiChanTimer = xTimerCreate(
+        "WifiChannelTimer", pdMS_TO_TICKS(wifi_channel_switch_interval * 10),
+        pdTRUE, (void*)0, switchWifiChannel);
     assert(WifiChanTimer);
     xTimerStart(WifiChanTimer, 0);
   }
   esp_wifi_set_promiscuous(true);
   initialized_wifi = 1;
-  #endif
+#endif
 }
 
 void wifi_sniffer_stop() {
-  #ifdef LIBPAX_WIFI
-  if(initialized_wifi) {
-    if(WifiChanTimer) xTimerStop(WifiChanTimer, 0);
+#ifdef LIBPAX_WIFI
+  if (initialized_wifi) {
+    if (WifiChanTimer) xTimerStop(WifiChanTimer, 0);
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_noop_sniffer));
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
@@ -128,5 +125,5 @@ void wifi_sniffer_stop() {
     ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_BT));
     initialized_wifi = 0;
   }
-  #endif
+#endif
 }
