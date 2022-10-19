@@ -95,7 +95,7 @@ void libpax_default_config(struct libpax_config_t* configuration) {
   memset(configuration, 0, sizeof(struct libpax_config_t));
   configuration->blecounter = 0;
   configuration->wificounter = 1;
-  configuration->wifi_my_country = 1;
+  strcpy(configuration->wifi_my_country, "01");
   configuration->wifi_channel_map = 0b100010100100100;
   configuration->wifi_channel_switch_interval = 50;
   configuration->wifi_rssi_threshold = 0;
@@ -173,10 +173,10 @@ int libpax_counter_start() {
     return -1;
   }
   if (current_config.wificounter) {
+    wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     set_wifi_country(current_config.wifi_my_country);
     set_wifi_channels(current_config.wifi_channel_map);
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
-    wifi_sniffer_init(current_config.wifi_channel_switch_interval);
   }
   if (current_config.wificounter && current_config.blecounter) {
     esp_wifi_set_ps(WIFI_PS_MIN_MODEM);

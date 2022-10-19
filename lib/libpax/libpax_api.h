@@ -31,7 +31,7 @@ struct libpax_config_t {
                                             // <-  13 ..........1 ->
                                             //    0b1010000001001 would be Channel: 1, 4, 11, 13
     uint8_t wificounter;                    // set to 0 if you do not want to install the WiFi sniffer
-    uint8_t wifi_my_country;                // e.g 0 = "EU", etc. select locale for WiFi RF settings
+    char wifi_my_country[3];                // set country code for WiFi RF settings, e.g. "01", "DE", etc.
     uint16_t wifi_channel_switch_interval;  // [seconds/100] -> 0,5 sec.
     int wifi_rssi_threshold;                // Filter for how strong the wifi signal should be to be counted
     int ble_rssi_threshold;                 // Filter for how strong the bluetooth signal should be to be counted

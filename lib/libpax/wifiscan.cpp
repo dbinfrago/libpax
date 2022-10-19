@@ -39,12 +39,7 @@ TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
 int wifi_rssi_threshold = 0;
 uint16_t channels_map = WIFI_CHANNEL_ALL;
-
-#define WIFI_CHANNEL_MAX 13
-// default values for country configuration
-static wifi_country_t wifi_country = {"EU", 1,
-                                      WIFI_CHANNEL_MAX, 100,
-                                      WIFI_COUNTRY_POLICY_MANUAL};
+static wifi_country_t country;
 
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}
 
@@ -66,17 +61,16 @@ wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type) {
 void switchWifiChannel(TimerHandle_t xTimer) {
   configASSERT(xTimer);
   do { channel =
-      (channel % WIFI_CHANNEL_MAX) + 1;  // rotate channels in bitmap
+      (channel % country.nchan) + 1;  // rotate channels in bitmap
   } while (!(channels_map >> (channel - 1) & 1));
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
-void set_wifi_country(uint8_t cc) {
-  switch(cc) {
-      case 1:
-        memcpy(wifi_country.cc, "EU", sizeof("EU"));
-      break;
-  }
+void set_wifi_country(const char* country_code) {
+  ESP_ERROR_CHECK(
+      esp_wifi_set_country_code(country_code, true));
+  ESP_ERROR_CHECK(
+      esp_wifi_get_country(&country));
 }
 
 void set_wifi_channels(uint16_t set_channels_map) {
@@ -103,14 +97,11 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
 
   ESP_ERROR_CHECK(esp_wifi_init(&wificfg));  // configure Wifi with cfg
   ESP_ERROR_CHECK(
-      esp_wifi_set_country(&wifi_country));  // set locales for RF and channels
-  ESP_ERROR_CHECK(
       esp_wifi_set_storage(WIFI_STORAGE_RAM));  // we don't need NVRAM
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
   ESP_ERROR_CHECK(
       esp_wifi_set_promiscuous_filter(&filter));  // set frame filter
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_sniffer_packet_handler));
-  ESP_ERROR_CHECK(esp_wifi_start());  // for esp_wifi v3.3
   ESP_ERROR_CHECK(
       esp_wifi_set_promiscuous(true));  // now switch on monitor mode
 
@@ -121,7 +112,6 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
     assert(WifiChanTimer);
     xTimerStart(WifiChanTimer, 0);
   }
-  ESP_ERROR_CHECK(esp_wifi_start());
   esp_wifi_set_promiscuous(true);
   initialized_wifi = 1;
   #endif
@@ -134,7 +124,6 @@ void wifi_sniffer_stop() {
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_noop_sniffer));
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
-    ESP_ERROR_CHECK(esp_wifi_stop());
     esp_wifi_deinit();
     ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_BT));
     initialized_wifi = 0;
