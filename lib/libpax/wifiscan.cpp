@@ -35,7 +35,6 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 #include "libpax.h"
 #include "wifiscan.h"
 
-
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
 int wifi_rssi_threshold = 0;
@@ -109,7 +108,7 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
     assert(WifiChanTimer);
     xTimerStart(WifiChanTimer, 0);
   }
-  esp_wifi_set_promiscuous(true);
+
   initialized_wifi = 1;
 #endif
 }
