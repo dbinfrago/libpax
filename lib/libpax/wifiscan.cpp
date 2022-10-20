@@ -71,6 +71,15 @@ void set_wifi_country(const char* country_code) {
   ESP_ERROR_CHECK(esp_wifi_get_country(&country));
 }
 
+// Keep this a while for compatibility with 1.0.1
+void set_wifi_country(uint8_t cc) {
+  switch (cc) {
+    case 1:
+      set_wifi_country("DE");
+      break;
+  }
+}
+
 void set_wifi_channels(uint16_t set_channels_map) {
   channels_map = set_channels_map;
 }
