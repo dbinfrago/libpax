@@ -6,8 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.2] - 2022-10-19
+## [1.1.0] - 2022-10-29
 - Adapt Wifi country settings to ESP IDF v4.4 Wi-Fi API
+- Keep backward compatibility to 1.0.1
 
 ## [1.0.1] - 2022-04-14
 - Count randomized MACs only (Wifi and BLE)
