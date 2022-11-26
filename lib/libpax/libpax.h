@@ -18,9 +18,9 @@ struct libpax_config_storage_t {
     uint8_t reserved_start[2];
     struct libpax_config_t config;
     // Added for structure alignment
-    uint8_t pad;
-     // reserved for future use
-    uint8_t reserved_end[22];             
+    uint8_t pad[2];
+    // reserved for future use
+    uint8_t reserved_end[21];             
     uint8_t checksum[4]; 
 };
 
