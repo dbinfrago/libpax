@@ -122,7 +122,7 @@ void test_callback() {
   TEST_ASSERT_EQUAL(0, err_code);
   printf("libpax should be running\n");
 
-  vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(6000));
+  vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(6010));
   TEST_ASSERT_EQUAL(6, time_called_back);
 }
 
