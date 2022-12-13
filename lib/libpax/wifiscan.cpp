@@ -130,7 +130,6 @@ void wifi_sniffer_stop() {
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
     esp_wifi_deinit();
-    ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_BT));
     initialized_wifi = 0;
   }
 #endif

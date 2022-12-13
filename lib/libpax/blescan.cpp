@@ -284,7 +284,6 @@ void stop_BLE_scan(void) {
     ESP_ERROR_CHECK(esp_bt_controller_disable());
     ESP_ERROR_CHECK(esp_bt_controller_deinit());
 #endif
-    ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_WIFI));
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }
