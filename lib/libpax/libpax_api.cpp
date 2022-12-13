@@ -176,16 +176,18 @@ int libpax_counter_start() {
     ESP_LOGE("configuration", "Configuration was not yet set.");
     return -1;
   }
+  // turn on BT before Wifi, since the ESP32 API coexistence configuration option depends 
+  // on the Bluetooth configuration option
+    if (current_config.blecounter) {
+    set_BLE_rssi_filter(current_config.ble_rssi_threshold);
+    start_BLE_scan(current_config.blescantime, current_config.blescanwindow,
+                   current_config.blescaninterval);
+  }
   if (current_config.wificounter) {
     wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     set_wifi_country(current_config.wifi_my_country_str);
     set_wifi_channels(current_config.wifi_channel_map);
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
-  }
-  if (current_config.blecounter) {
-    set_BLE_rssi_filter(current_config.ble_rssi_threshold);
-    start_BLE_scan(current_config.blescantime, current_config.blescanwindow,
-                   current_config.blescaninterval);
   }
   return 0;
 }
