@@ -18,7 +18,8 @@ typedef struct {
   uint8_t payload[0];  // network data ended with 4 bytes csum (CRC32)
 } wifi_ieee80211_packet_t;
 
-void set_wifi_country(uint8_t country_code);
+void set_wifi_country(const char* country_code);
+void set_wifi_country(uint8_t cc);
 void set_wifi_channels(uint16_t channels_map);
 void set_wifi_rssi_filter(int set_rssi_threshold);
 

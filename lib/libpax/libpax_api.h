@@ -39,6 +39,7 @@ struct libpax_config_t {
     uint32_t blescantime;                   // [seconds] scan duration, 0 means infinite [default]
     uint16_t blescanwindow;                 // [milliseconds] scan window, see below, 3 ... 10240, default 80ms
     uint16_t blescaninterval;               // [illiseconds] scan interval, see below, 3 ... 10240, default 80ms = 100% duty cycle
+    char wifi_my_country_str[3];            // set country code for WiFi RF settings, e.g. "01", "DE", etc.
 };
 
 

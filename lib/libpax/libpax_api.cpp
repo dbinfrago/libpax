@@ -95,7 +95,7 @@ void libpax_default_config(struct libpax_config_t* configuration) {
   memset(configuration, 0, sizeof(struct libpax_config_t));
   configuration->blecounter = 0;
   configuration->wificounter = 1;
-  configuration->wifi_my_country = 1;
+  strcpy(configuration->wifi_my_country_str, "01");
   configuration->wifi_channel_map = 0b100010100100100;
   configuration->wifi_channel_switch_interval = 50;
   configuration->wifi_rssi_threshold = 0;
@@ -130,6 +130,10 @@ int libpax_update_config(struct libpax_config_t* configuration) {
 
   if (result == 0) {
     memcpy(&current_config, configuration, sizeof(struct libpax_config_t));
+    // this if to keep v1.0.1 backward compatibility
+    if (strcmp(current_config.wifi_my_country_str, "")) {
+      strcpy(current_config.wifi_my_country_str, current_config.wifi_my_country ? "DE" : "01");
+    }
     config_set = 1;
   }
   return result;
@@ -172,26 +176,26 @@ int libpax_counter_start() {
     ESP_LOGE("configuration", "Configuration was not yet set.");
     return -1;
   }
-  if (current_config.wificounter) {
-    set_wifi_country(current_config.wifi_my_country);
-    set_wifi_channels(current_config.wifi_channel_map);
-    set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
-    wifi_sniffer_init(current_config.wifi_channel_switch_interval);
-  }
-  if (current_config.wificounter && current_config.blecounter) {
-    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-  } else {
-    esp_wifi_set_ps(WIFI_PS_NONE);
-  }
-  if (current_config.blecounter) {
+  // turn on BT before Wifi, since the ESP32 API coexistence configuration option depends 
+  // on the Bluetooth configuration option
+    if (current_config.blecounter) {
     set_BLE_rssi_filter(current_config.ble_rssi_threshold);
     start_BLE_scan(current_config.blescantime, current_config.blescanwindow,
                    current_config.blescaninterval);
+  }
+  if (current_config.wificounter) {
+    wifi_sniffer_init(current_config.wifi_channel_switch_interval);
+    set_wifi_country(current_config.wifi_my_country_str);
+    set_wifi_channels(current_config.wifi_channel_map);
+    set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
   }
   return 0;
 }
 
 int libpax_counter_stop() {
+  if (PaxReportTimer == NULL) {
+    return -1;
+  }
   wifi_sniffer_stop();
   stop_BLE_scan();
   xTimerStop(PaxReportTimer, 0);

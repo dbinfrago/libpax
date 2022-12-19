@@ -12,8 +12,10 @@
 #define BLESCANINTERVAL 80  // [illiseconds]
 #endif
 
-// local Tag for logging
-static const char TAG[] = "bluetooth";
+#ifndef TAG
+#define TAG __FILE__
+#endif
+
 int initialized_ble = 0;
 int ble_rssi_threshold = 0;
 
@@ -282,7 +284,6 @@ void stop_BLE_scan(void) {
     ESP_ERROR_CHECK(esp_bt_controller_disable());
     ESP_ERROR_CHECK(esp_bt_controller_deinit());
 #endif
-    ESP_ERROR_CHECK(esp_coex_preference_set(ESP_COEX_PREFER_WIFI));
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }
