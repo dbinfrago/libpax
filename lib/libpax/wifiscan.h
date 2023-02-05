@@ -15,7 +15,7 @@ typedef struct {
 
 typedef struct {
   wifi_ieee80211_mac_hdr_t hdr;
-  uint8_t payload[0];  // network data ended with 4 bytes csum (CRC32)
+  uint8_t payload[];  // network data ended with 4 bytes csum (CRC32)
 } wifi_ieee80211_packet_t;
 
 void set_wifi_country(const char* country_code);
