@@ -93,6 +93,13 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
   wifi_init_config_t wificfg = WIFI_INIT_CONFIG_DEFAULT();
   wificfg.nvs_enable = 0;         // we don't need any wifi settings from NVRAM
   wificfg.wifi_task_core_id = 0;  // we want wifi task running on core 0
+  wificfg.static_rx_buf_num = 16;  // increase RX buffer to minimize packet loss
+  wificfg.dynamic_rx_buf_num = 64;
+  wificfg.rx_ba_win = 32;   // should be twice of static_rx_buf_num
+  wificfg.tx_buf_type = 1;  // we don't TX, thus keep tx memory footprint small
+  wificfg.static_tx_buf_num = 0;
+  wificfg.dynamic_tx_buf_num = 4;
+  wificfg.cache_tx_buf_num = 4;  // can't be zero!
 
   // filter management and data frames to the sniffer
   wifi_promiscuous_filter_t filter = {.filter_mask =
