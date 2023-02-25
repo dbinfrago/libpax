@@ -108,7 +108,7 @@ int time_called_back = 0;
 
 void process_count(void) {
   time_called_back++;
-  printf("pax: %d; %d; %d;\n", count_from_libpax.pax,
+  printf("pax: %lu; %lu; %lu;\n", count_from_libpax.pax,
          count_from_libpax.wifi_count, count_from_libpax.ble_count);
 }
 
