@@ -16,17 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include <libpax_api.h>
+#include "libpax_api.h"
 #include "blescan.h"
 #include "libpax.h"
 #include "wifiscan.h"
-
-#include <esp_event.h>  // needed for Wifi event handler
-#include <esp_log.h>
-#include <esp_spi_flash.h>  // needed for reading ESP32 chip attributes
-#include <string.h>
-#include "freertos/task.h"    // needed for tasks
-#include "freertos/timers.h"  // TimerHandle_t
 
 struct libpax_config_t current_config;
 int config_set = 0;
@@ -132,7 +125,8 @@ int libpax_update_config(struct libpax_config_t* configuration) {
     memcpy(&current_config, configuration, sizeof(struct libpax_config_t));
     // this if to keep v1.0.1 backward compatibility
     if (strcmp(current_config.wifi_my_country_str, "")) {
-      strcpy(current_config.wifi_my_country_str, current_config.wifi_my_country ? "DE" : "01");
+      strcpy(current_config.wifi_my_country_str,
+             current_config.wifi_my_country ? "DE" : "01");
     }
     config_set = 1;
   }
@@ -153,15 +147,6 @@ int libpax_counter_init(void (*init_callback)(void),
   pCurrent_count = init_current_count;
   counter_mode = init_counter_mode;
 
-  /* Initialize NVS — it is used to store PHY calibration data. */
-  esp_err_t ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
-  }
-  ESP_ERROR_CHECK(ret);
-
   libpax_counter_reset();
 
   PaxReportTimer = xTimerCreate(
@@ -176,9 +161,9 @@ int libpax_counter_start() {
     ESP_LOGE("configuration", "Configuration was not yet set.");
     return -1;
   }
-  // turn on BT before Wifi, since the ESP32 API coexistence configuration option depends 
-  // on the Bluetooth configuration option
-    if (current_config.blecounter) {
+  // turn on BT before Wifi, since the ESP32 API coexistence configuration
+  // option depends on the Bluetooth configuration option
+  if (current_config.blecounter) {
     set_BLE_rssi_filter(current_config.ble_rssi_threshold);
     start_BLE_scan(current_config.blescantime, current_config.blescanwindow,
                    current_config.blescaninterval);

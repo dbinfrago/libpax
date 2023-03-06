@@ -1,22 +1,18 @@
 #ifndef _GLOBALS_H
 #define _GLOBALS_H
 
-#ifdef LIBPAX_ESPIDF
+#ifdef LIBPAX_ESPIDF // ESPIDF
 #include "esp_log.h"
-/*espidf*/
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
-
+#include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
-
-#else
+#include <freertos/timers.h>
+#else // Arduino IDE
 #include <Arduino.h>
 #endif
 
-extern uint16_t volatile macs_wifi;
-extern uint16_t volatile macs_ble;
-
+extern uint16_t macs_wifi;
+extern uint16_t macs_ble;
+extern uint8_t channel;  // wifi channel rotation counter
 extern TimerHandle_t WifiChanTimer;
-extern uint8_t volatile channel;  // wifi channel rotation counter
 
 #endif

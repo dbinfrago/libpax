@@ -195,7 +195,6 @@ void hci_evt_process(void *pvParameters) {
       }
       free(queue_data);
     }
-    memset(rcv_data, 0, sizeof(host_rcv_data_t));
   }
 }
 

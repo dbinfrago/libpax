@@ -17,11 +17,7 @@ limitations under the License.
 
 */
 #include "globals.h"
-
 #include "libpax.h"
-#include <libpax_api.h>
-#include "esp_log.h"
-#include <string.h>
 
 typedef uint32_t bitmap_t;
 enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
@@ -33,10 +29,10 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 DRAM_ATTR bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];
 int seen_ids_count = 0;
 
-uint16_t volatile macs_wifi = 0;
-uint16_t volatile macs_ble = 0;
+uint16_t macs_wifi = 0;
+uint16_t macs_ble = 0;
 
-uint8_t volatile channel = 0;  // channel rotation counter
+uint8_t channel = 0;  // channel rotation counter
 
 IRAM_ATTR void set_id(bitmap_t *bitmap, uint16_t id) {
   bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));

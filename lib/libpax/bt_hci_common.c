@@ -7,7 +7,6 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#include "globals.h"
 #include "bt_hci_common.h"
 
 uint16_t make_cmd_set_evt_mask (uint8_t *buf, uint8_t *evt_mask)

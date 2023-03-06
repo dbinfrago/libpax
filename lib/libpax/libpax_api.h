@@ -2,6 +2,7 @@
 #define _LIBPAX_API_H
 
 #include <stdint.h>
+#include <string.h>
 
 // Build-time options
 // #define LIBPAX_WIFI // enables WiFi sniffing features in build 

@@ -4,7 +4,7 @@
 struct count_payload_t count_from_libpax;
 
 void process_count(void) {
-  printf("pax: %d; %d; %d;\n", count_from_libpax.pax, count_from_libpax.wifi_count, count_from_libpax.ble_count);
+  printf("pax: %lu; %lu; %lu;\n", count_from_libpax.pax, count_from_libpax.wifi_count, count_from_libpax.ble_count);
 }
 
 void init() {

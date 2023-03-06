@@ -30,8 +30,6 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 
 */
 #include "globals.h"
-
-#include <string.h>
 #include "libpax.h"
 #include "wifiscan.h"
 
@@ -63,7 +61,7 @@ void switchWifiChannel(TimerHandle_t xTimer) {
   do {
     channel = (channel % country.nchan) + 1;  // rotate channels in bitmap
   } while (!(channels_map >> (channel - 1) & 1));
-  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);  // we use HT20 bandwith
 }
 
 void set_wifi_country(const char* country_code) {
@@ -90,9 +88,27 @@ void set_wifi_rssi_filter(int set_rssi_threshold) {
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
 #ifdef LIBPAX_WIFI
+
+  // initialize NVS, is used to store wifi PHY calibration data
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+
+  // initialize wifi driver with settings tuned for sniffing
   wifi_init_config_t wificfg = WIFI_INIT_CONFIG_DEFAULT();
-  wificfg.nvs_enable = 0;         // we don't need any wifi settings from NVRAM
-  wificfg.wifi_task_core_id = 0;  // we want wifi task running on core 0
+  wificfg.nvs_enable = 0;          // we don't need any wifi settings from NVRAM
+  wificfg.wifi_task_core_id = 0;   // we want wifi task running on core 0
+  wificfg.static_rx_buf_num = 16;  // increase RX buffer to minimize packet loss
+  wificfg.dynamic_rx_buf_num = 64;
+  wificfg.rx_ba_win = 32;   // should be twice of static_rx_buf_num
+  wificfg.tx_buf_type = 1;  // we don't TX, thus keep tx memory footprint small
+  wificfg.static_tx_buf_num = 0;
+  wificfg.dynamic_tx_buf_num = 4;
+  wificfg.cache_tx_buf_num = 4;  // can't be zero!
 
   // filter management and data frames to the sniffer
   wifi_promiscuous_filter_t filter = {.filter_mask =
@@ -100,11 +116,12 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
                                           WIFI_PROMIS_FILTER_MASK_DATA};
 
   ESP_ERROR_CHECK(esp_wifi_init(&wificfg));  // configure Wifi with cfg
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
   ESP_ERROR_CHECK(
       esp_wifi_set_promiscuous_filter(&filter));  // enable frame filtering
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_sniffer_packet_handler));
-  ESP_ERROR_CHECK(
-      esp_wifi_set_promiscuous(true));  // start sniffer mode
+  ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));  // start sniffer mode
 
   // setup wifi channel rotation timer
   if (wifi_channel_switch_interval > 0) {
