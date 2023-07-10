@@ -52,6 +52,7 @@ void report(TimerHandle_t xTimer) {
 void libpax_serialize_config(char* store_addr,
                              struct libpax_config_t* configuration) {
   struct libpax_config_storage_t storage_buffer;
+  memset(&storage_buffer, 0, sizeof(struct libpax_config_storage_t));
   storage_buffer.major_version = CONFIG_MAJOR_VERSION;
   storage_buffer.minor_version = CONFIG_MINOR_VERSION;
   memcpy(&(storage_buffer.config), configuration,
