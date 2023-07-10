@@ -96,7 +96,18 @@ void test_config_store() {
                                   sizeof(struct libpax_config_t)));
   struct libpax_config_t read_configuration;
   char configuration_memory[LIBPAX_CONFIG_SIZE];
+  
+  // Test if memory for two serialize runs is the same
+  char configuration_memory_second_run[LIBPAX_CONFIG_SIZE];
   libpax_serialize_config(configuration_memory, &current_config);
+  libpax_serialize_config(configuration_memory_second_run, &current_config);
+  TEST_ASSERT_EQUAL(0, memcmp(configuration_memory, configuration_memory_second_run, LIBPAX_CONFIG_SIZE));
+
+  // Test if memory in spare area is zeroed
+  uint8_t spare_cmp[23];
+  memset(spare_cmp, 0, sizeof(spare_cmp));
+  TEST_ASSERT_EQUAL(0, memcmp(((libpax_config_storage_t*)configuration_memory)->pad, spare_cmp, sizeof(spare_cmp)));
+
   TEST_ASSERT_EQUAL(
       0, libpax_deserialize_config(configuration_memory, &read_configuration));
   TEST_ASSERT_EQUAL(0, memcmp(&current_config, &read_configuration,
