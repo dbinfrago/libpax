@@ -66,7 +66,7 @@ int libpax_deserialize_config(char* source,
   struct libpax_config_storage_t storage_buffer;
   memcpy(&storage_buffer, source, sizeof(struct libpax_config_storage_t));
   if (storage_buffer.major_version != CONFIG_MAJOR_VERSION) {
-    ESP_LOGE("configuration",
+    ESP_LOGE("libpax",
              "Restoring incompatible config with different MAJOR version: "
              "%d.%d instead of %d.%d",
              storage_buffer.major_version, storage_buffer.minor_version,
@@ -75,7 +75,7 @@ int libpax_deserialize_config(char* source,
   }
   if (storage_buffer.minor_version != CONFIG_MINOR_VERSION) {
     ESP_LOGW(
-        "configuration",
+        "libpax",
         "Restoring config with different MINOR version: %d.%d instead of %d.%d",
         storage_buffer.major_version, storage_buffer.minor_version,
         CONFIG_MAJOR_VERSION, CONFIG_MINOR_VERSION);
@@ -108,7 +108,7 @@ int libpax_update_config(struct libpax_config_t* configuration) {
 
 #ifndef LIBPAX_WIFI
   if (configuration->wificounter) {
-    ESP_LOGE("configuration",
+    ESP_LOGE("libpax",
              "Configuration requests Wi-Fi but was disabled at compile time.");
     result &= LIBPAX_ERROR_WIFI_NOT_AVAILABLE;
   }
@@ -116,7 +116,7 @@ int libpax_update_config(struct libpax_config_t* configuration) {
 
 #ifndef LIBPAX_BLE
   if (configuration->blecounter) {
-    ESP_LOGE("configuration",
+    ESP_LOGE("libpax",
              "Configuration requests BLE but was disabled at compile time.");
     result &= LIBPAX_ERROR_BLE_NOT_AVAILABLE;
   }
@@ -140,7 +140,7 @@ int libpax_counter_init(void (*init_callback)(void),
                         uint16_t init_pax_report_interval_sec,
                         int init_counter_mode) {
   if (PaxReportTimer != NULL && xTimerIsTimerActive(PaxReportTimer)) {
-    ESP_LOGW("initialization", "lib already active. Ignoring new init.");
+    ESP_LOGW("libpax", "lib already active. Ignoring new init.");
     return -1;
   }
 
@@ -157,11 +157,21 @@ int libpax_counter_init(void (*init_callback)(void),
   return 0;
 }
 
+#define LIBPAX_STARTED 1
+#define LIBPAX_STOPPED 2
+int libpax_state = LIBPAX_STOPPED;
+
 int libpax_counter_start() {
   if (config_set == 0) {
-    ESP_LOGE("configuration", "Configuration was not yet set.");
+    ESP_LOGE("libpax", "Configuration was not yet set, aborting libpax_counter_start.");
     return -1;
   }
+
+  if (libpax_state != LIBPAX_STOPPED) {
+    ESP_LOGW("libpax", "libpax was not in stopped state, not executing start again.");
+    return -1;
+  }
+
   // turn on BT before Wifi, since the ESP32 API coexistence configuration
   // option depends on the Bluetooth configuration option
   if (current_config.blecounter) {
@@ -175,6 +185,8 @@ int libpax_counter_start() {
     set_wifi_channels(current_config.wifi_channel_map);
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
   }
+
+  libpax_state = LIBPAX_STARTED;
   return 0;
 }
 
@@ -186,6 +198,8 @@ int libpax_counter_stop() {
   stop_BLE_scan();
   xTimerStop(PaxReportTimer, 0);
   PaxReportTimer = NULL;
+
+  libpax_state = LIBPAX_STOPPED;
   return 0;
 }
 
