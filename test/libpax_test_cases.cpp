@@ -219,16 +219,48 @@ void test_integration() {
   test_stop();
 }
 
-void run_tests() {
+void test_dual_start_with_ble() {
+    struct libpax_config_t configuration;
+    libpax_default_config(&configuration);
+    // only blecounter is active
+    configuration.blecounter = 1;
+    configuration.wificounter = 0;
+    libpax_update_config(&configuration);
+    int err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1);
+    TEST_ASSERT_EQUAL(0, err_code);
+    err_code = libpax_counter_start(); 
+    TEST_ASSERT_EQUAL(0, err_code);
+    // Should not crash the firmware
+    err_code = libpax_counter_start();
+    TEST_ASSERT_EQUAL(-1, err_code);
+    err_code = libpax_counter_stop();
+    TEST_ASSERT_EQUAL(0, err_code);
+  }
+
+void test_no_unusual_reset() {
+    const soc_reset_reason_t reason = esp_rom_get_reset_reason(0);
+    TEST_ASSERT_MESSAGE(reason != RESET_REASON_CPU0_SW, "Should not be software reset (lib crash?)");
+}
+
+int run_tests() {
   UNITY_BEGIN();
+
+  RUN_TEST(test_no_unusual_reset);
+
+  const soc_reset_reason_t reason = esp_rom_get_reset_reason(0);
+
+  if (reason == RESET_REASON_CPU0_SW) {
+    return UNITY_END();
+  } 
 
   RUN_TEST(test_mac_add_bytes);
   RUN_TEST(test_collision_add);
   RUN_TEST(test_counter_reset);
   RUN_TEST(test_config_store);
+  RUN_TEST(test_dual_start_with_ble);
   RUN_TEST(test_integration);
 
-  UNITY_END();
+  return UNITY_END();
 }
 
 #ifdef LIBPAX_ARDUINO
