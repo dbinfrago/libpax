@@ -6,3 +6,4 @@ size
 .vscode
 test/build
 build
+.pio

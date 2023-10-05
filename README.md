@@ -10,16 +10,20 @@ The library was extracted from the ESP32-Paxcounter project to enhance reusabili
 For using the library please refer to `libpax_api.h`.
 All functions outside the `libpax_api.h` are considered internal and might change between releases.
 
+**Note**: The library is not thread-safe.
+
 ### Compile time options
 
 You must define one of the following compile time constants to select the framework you are working with:
-```
+
+```plain
 LIBPAX_ARDUINO
 LIBPAX_ESPIDF
 ```
 
 To select the supported counting method you may use:
-```
+
+```plain
 LIBPAX_WIFI 
 LIBPAX_BLE
 ```
@@ -28,13 +32,13 @@ The number of remembered devices is limited to a maximum of 65535, requiring 8 K
 
 ## Examples
 
-The `/examples` folder contains an
+The `src` folder contains an example how to use libpax.
 
 ## Tests
 
 The library contains unit tests, which can be run via:
 
-```
+```sh
 pio test -e espidf -e arduino
 ```
 
