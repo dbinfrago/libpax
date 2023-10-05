@@ -10,6 +10,8 @@ The library was extracted from the ESP32-Paxcounter project to enhance reusabili
 For using the library please refer to `libpax_api.h`.
 All functions outside the `libpax_api.h` are considered internal and might change between releases.
 
+**Note**: The library is not thread-safe.
+
 ### Compile time options
 
 You must define one of the following compile time constants to select the framework you are working with:
