@@ -192,8 +192,10 @@ int libpax_counter_start() {
 
 int libpax_counter_stop() {
   if (PaxReportTimer == NULL) {
+    ESP_LOGI("libpax", "libpax requested to stop, but not running.");
     return -1;
   }
+  ESP_LOGI("libpax", "Stopping libpax.");
   wifi_sniffer_stop();
   stop_BLE_scan();
   xTimerStop(PaxReportTimer, 0);
