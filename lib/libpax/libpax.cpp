@@ -16,14 +16,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 */
-#include "globals.h"
 #include "libpax.h"
+#include "globals.h"
 
 typedef uint32_t bitmap_t;
 enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b) ((b) % BITS_PER_WORD)
-#define LIBPAX_MAX_SIZE 0xFFFF  // full enumeration of uint16_t
+#define LIBPAX_MAX_SIZE 0x1FFFF  // full enumeration of uint32_t
 #define LIBPAX_MAP_SIZE (LIBPAX_MAX_SIZE / BITS_PER_WORD)
 
 DRAM_ATTR bitmap_t seen_ids_map[LIBPAX_MAP_SIZE];
@@ -69,20 +69,20 @@ IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   uint16_t *id;
   // mac addresses are 6 bytes long, we only use the last two bytes
   id = (uint16_t *)(paddr + 4);
-    
-  //ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
-  //         paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
-    
-  // if it is NOT a locally administered ("random") mac, we don't count it
-  if (!(paddr[0] & 0b10)) return false;
-  
+
+  // ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
+  //          paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
+
+  // if it is a locally administered ("random") mac, we don't count it
+  if (paddr[0] & 0b10) return false;
+
   int added = add_to_bucket(*id);
 
   // Count only if MAC was not yet seen
   if (added) {
-    if(sniff_type == MAC_SNIFF_BLE) {
+    if (sniff_type == MAC_SNIFF_BLE) {
       macs_ble++;
-    } else if(sniff_type == MAC_SNIFF_WIFI)  {
+    } else if (sniff_type == MAC_SNIFF_WIFI) {
       macs_wifi++;
     }
   };  // added
