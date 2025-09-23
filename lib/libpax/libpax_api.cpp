@@ -151,7 +151,7 @@ int libpax_counter_init(void (*init_callback)(void),
   libpax_counter_reset();
 
   PaxReportTimer = xTimerCreate(
-      "PaxReportTimer", pdMS_TO_TICKS(init_pax_report_interval_sec * 1000),
+      "PaxReportTimer", (init_pax_report_interval_sec * 1000) / portTICK_PERIOD_MS,
       pdTRUE, (void*)0, report);
   xTimerStart(PaxReportTimer, 0);
   return 0;
