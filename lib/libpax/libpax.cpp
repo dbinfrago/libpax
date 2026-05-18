@@ -24,7 +24,7 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b) ((b) % BITS_PER_WORD)
 
-DRAM_ATTR bitmap_t seen_ids_map[0x07FF]; // full enumeration of uint16_t
+DRAM_ATTR bitmap_t seen_ids_map[2048]; // full enumeration of uint16_t
 int seen_ids_count = 0;
 
 uint16_t macs_wifi = 0;
