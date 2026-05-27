@@ -32,26 +32,31 @@ uint16_t macs_ble = 0;
 
 uint8_t channel = 0;  // channel rotation counter
 
-IRAM_ATTR void set_id(bitmap_t *bitmap, uint16_t id) {
+// Inline bit operations for maximum performance
+static inline IRAM_ATTR void set_id(bitmap_t *bitmap, uint16_t id) {
   bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));
 }
 
-IRAM_ATTR int get_id(bitmap_t *bitmap, uint16_t id) {
+static inline IRAM_ATTR int get_id(bitmap_t *bitmap, uint16_t id) {
   bitmap_t bit = bitmap[WORD_OFFSET(id)] & ((bitmap_t)1 << BIT_OFFSET(id));
   return bit != 0;
 }
 
 /** remember given id
  * returns 1 if id is new, 0 if already seen this is since last reset
+ * Hot-path critical function - highly optimized
  */
-IRAM_ATTR int add_to_bucket(uint16_t id) {
-  if (get_id(seen_ids_map, id)) {
+static inline IRAM_ATTR int add_to_bucket(uint16_t id) {
+  uint16_t word_idx = WORD_OFFSET(id);
+  uint32_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
+  
+  if (seen_ids_map[word_idx] & bit_mask) {
     return 0;  // already seen
-  } else {
-    set_id(seen_ids_map, id);
-    seen_ids_count++;
-    return 1;  // new
   }
+  
+  seen_ids_map[word_idx] |= bit_mask;
+  seen_ids_count++;
+  return 1;  // new
 }
 
 void reset_bucket() {
@@ -63,28 +68,27 @@ int libpax_wifi_counter_count() { return macs_wifi; }
 
 int libpax_ble_counter_count() { return macs_ble; }
 
+/** Hot-path function called from ISR context for every WiFi/BLE packet
+ * Optimized for minimum cycles per call
+ */
 IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
-  uint16_t *id;
-  // mac addresses are 6 bytes long, we only use the last two bytes
-  id = (uint16_t *)(paddr + 4);
-    
-  //ESP_LOGD(TAG, "MAC=%02x:%02x:%02x:%02x:%02x:%02x -> ID=%04x", paddr[0],
-  //         paddr[1], paddr[2], paddr[3], paddr[4], paddr[5], *id);
-    
-  // if it is NOT a locally administered ("random") mac, we don't count it
-  if (!(paddr[0] & 0b10)) return false;
+  // Check locally administered bit first (cheapest check)
+  if (!(paddr[0] & 0x02)) return 0;  // 0x02 = locally administered bit
   
-  int added = add_to_bucket(*id);
-
-  // Count only if MAC was not yet seen
-  if (added) {
-    if(sniff_type == MAC_SNIFF_BLE) {
-      macs_ble++;
-    } else if(sniff_type == MAC_SNIFF_WIFI)  {
-      macs_wifi++;
-    }
-  };  // added
-
-  return added;  // function returns bool if a new and unique Wifi or BLE mac
-                 // was counted (true) or not (false)
+  // Use last 2 bytes of MAC address as ID (little-endian)
+  uint16_t id = (paddr[5] << 8) | paddr[4];
+  
+  int added = add_to_bucket(id);
+  
+  // Only update counters on new MAC (most calls return here)
+  if (!added) return 0;
+  
+  // Update appropriate counter based on type
+  if (sniff_type == MAC_SNIFF_BLE) {
+    macs_ble++;
+  } else if (sniff_type == MAC_SNIFF_WIFI) {
+    macs_wifi++;
+  }
+  
+  return 1;
 }

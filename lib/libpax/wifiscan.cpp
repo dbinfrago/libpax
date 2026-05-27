@@ -42,26 +42,37 @@ static wifi_country_t country;
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}
 
 // using IRAM_ATTR here to speed up callback function
+// Optimized for minimal overhead in hot path
 static IRAM_ATTR void wifi_sniffer_packet_handler(
     void* buff, wifi_promiscuous_pkt_type_t type) {
-  const wifi_promiscuous_pkt_t* ppkt = (wifi_promiscuous_pkt_t*)buff;
-  const wifi_ieee80211_packet_t* ipkt = (wifi_ieee80211_packet_t*)ppkt->payload;
-  const wifi_ieee80211_mac_hdr_t* hdr = &ipkt->hdr;
-
-  if ((wifi_rssi_threshold) &&
-      (ppkt->rx_ctrl.rssi < wifi_rssi_threshold))  // rssi is negative value
+  // Inline struct access for better code generation
+  const wifi_promiscuous_pkt_t* const ppkt = (wifi_promiscuous_pkt_t*)buff;
+  
+  // Early exit on RSSI filter (most common case when threshold set)
+  if (wifi_rssi_threshold != 0 && ppkt->rx_ctrl.rssi < wifi_rssi_threshold) {
     return;
-  else
-    mac_add((uint8_t*)hdr->addr2, MAC_SNIFF_WIFI);
+  }
+  
+  // Only extract payload header after RSSI check passes
+  const wifi_ieee80211_packet_t* const ipkt = 
+      (wifi_ieee80211_packet_t*)ppkt->payload;
+  
+  // Use sender address directly without extra struct access
+  mac_add((uint8_t*)ipkt->hdr.addr2, MAC_SNIFF_WIFI);
 }
 
-// Software-timer driven Wifi channel rotation callback function
-void switchWifiChannel(TimerHandle_t xTimer) {
-  configASSERT(xTimer);
-  do {
-    channel = (channel % country.nchan) + 1;  // rotate channels in bitmap
-  } while (!(channels_map >> (channel - 1) & 1));
-  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);  // we use HT20 bandwith
+// Optimized channel rotation with minimal overhead
+IRAM_ATTR void switchWifiChannel(TimerHandle_t xTimer) {
+  // Pre-computed next channel, avoid modulo operation
+  uint8_t next_channel = (channel >= country.nchan) ? 1 : (channel + 1);
+  
+  // Find next enabled channel
+  while (!(channels_map >> (next_channel - 1) & 1)) {
+    next_channel = (next_channel >= country.nchan) ? 1 : (next_channel + 1);
+  }
+  
+  channel = next_channel;
+  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
 void set_wifi_country(const char* country_code) {

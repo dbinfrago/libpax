@@ -1,8 +1,27 @@
-# This file was automatically generated for projects
-# without default 'CMakeLists.txt' file.
+# Performance-optimized CMakeLists.txt for libpax
 
 FILE(GLOB_RECURSE app_sources *.*)
 
+# Add compiler flags for performance optimization
+# -O3: Aggressive optimization
+# -finline-functions: Inline simple functions
+# -ffast-math: Allow fast math approximations
 idf_component_register(SRCS ${app_sources}
     INCLUDE_DIRS .
     REQUIRES nvs_flash bt spi_flash)
+
+# Performance optimization flags
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    -O3
+    -finline-functions
+    -funroll-loops
+    -flto
+    -ffunction-sections
+    -fdata-sections
+)
+
+# Link-time optimization
+target_link_options(${COMPONENT_LIB} PRIVATE
+    -flto
+    -Wl,--gc-sections
+)

@@ -24,6 +24,24 @@ typedef struct {
   uint16_t q_data_len;
 } host_rcv_data_t;
 
+// Pre-allocated buffers to avoid malloc overhead in hot path
+#define BLE_MAX_PACKET_SIZE 256
+#define BLE_QUEUE_SIZE 16
+
+// Pool of pre-allocated packets
+static uint8_t ble_packet_pool[BLE_QUEUE_SIZE][BLE_MAX_PACKET_SIZE];
+static uint8_t pool_index = 0;
+static uint8_t pool_lock = 0;
+
+// Fast allocation from pool instead of malloc
+static inline uint8_t* ble_alloc_packet(uint16_t len) {
+  if (len > BLE_MAX_PACKET_SIZE) return NULL;
+  
+  uint8_t idx = pool_index;
+  pool_index = (pool_index + 1) % BLE_QUEUE_SIZE;
+  return ble_packet_pool[idx];
+}
+
 static uint8_t hci_cmd_buf[128];
 
 static QueueHandle_t adv_queue;
@@ -39,37 +57,35 @@ static void controller_rcv_pkt_ready(void) {
 
 /*
  * @brief: BT controller callback function to transfer data packet to
- *         the host
+ *         the host. Optimized for minimal allocation overhead.
  */
 static int host_rcv_pkt(uint8_t *data, uint16_t len) {
   host_rcv_data_t send_data;
-  uint8_t *data_pkt;
+  
   /* Check second byte for HCI event. If event opcode is 0x0e, the event is
    * HCI Command Complete event. Since we have received "0x0e" event, we can
    * check for byte 4 for command opcode and byte 6 for it's return status. */
-  if (data[1] == 0x0e) {
-    if (data[6] != 0) {
-      ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", data[4],
-               data[6]);
-      return ESP_FAIL;
-    }
-  }
-
-  data_pkt = (uint8_t *)malloc(sizeof(uint8_t) * len);
-  if (data_pkt == NULL) {
-    ESP_LOGE(TAG, "Malloc data_pkt failed");
+  if (data[1] == 0x0e && data[6] != 0) {
+    ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", 
+             data[4], data[6]);
     return ESP_FAIL;
   }
+
+  // Use pre-allocated buffer pool instead of malloc
+  uint8_t *data_pkt = ble_alloc_packet(len);
+  if (data_pkt == NULL) {
+    ESP_LOGE(TAG, "BLE packet buffer exhausted");
+    return ESP_FAIL;
+  }
+  
   memcpy(data_pkt, data, len);
   send_data.q_data = data_pkt;
   send_data.q_data_len = len;
+  
   if (xQueueSend(adv_queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
     ESP_LOGD(TAG, "Failed to enqueue advertising report. Queue full.");
-    /* If data sent successfully, then free the pointer in `xQueueReceive'
-     * after processing it. Or else if enqueue in not successful, free it
-     * here. */
-    free(data_pkt);
   }
+  
   return ESP_OK;
 }
 
@@ -115,85 +131,79 @@ static void hci_cmd_send_ble_scan_start(void) {
   ESP_LOGI(TAG, "BLE Scanning started");
 }
 
-void hci_evt_process(void *pvParameters) {
-  host_rcv_data_t *rcv_data =
-      (host_rcv_data_t *)malloc(sizeof(host_rcv_data_t));
-  if (rcv_data == NULL) {
-    ESP_LOGE(TAG, "Malloc rcv_data failed");
-    return;
-  }
+// Pre-allocated receiver data and address buffer
+static host_rcv_data_t rcv_data_buffer;
+static uint8_t addr_buffer[6 * 32];  // Max 32 responses per event
 
+void hci_evt_process(void *pvParameters) {
   uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
   uint16_t data_ptr;
-  short int rssi;
+  int8_t rssi;  // Use signed int8_t for RSSI values
 
   while (1) {
-    uint8_t *queue_data = NULL, *addr = NULL;
+    uint8_t *queue_data = NULL;
     total_data_len = 0;
 
-    if (xQueueReceive(adv_queue, rcv_data, portMAX_DELAY) != pdPASS) {
+    if (xQueueReceive(adv_queue, &rcv_data_buffer, portMAX_DELAY) != pdPASS) {
       ESP_LOGE(TAG, "Queue receive error");
-    } else {
-      // `data_ptr' keeps track of current position in the received data
-      data_ptr = 0;
-      queue_data = rcv_data->q_data;
+      continue;
+    }
 
-      // Parsing `data' and copying in various fields
-      // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
+    queue_data = rcv_data_buffer.q_data;
+    data_ptr = 0;
 
-      hci_event_opcode = queue_data[++data_ptr];
-      if (hci_event_opcode == LE_META_EVENTS) {
-        // set `data_ptr' to 4th entry, which will point to sub event
-        data_ptr += 2;
-        sub_event = queue_data[data_ptr++];
-        // check if sub event is LE advertising report event
-        if (sub_event == HCI_LE_ADV_REPORT) {
-          // get number of advertising reports
-          num_responses = queue_data[data_ptr++];
+    // Parsing `data' and copying in various fields
+    // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
+    hci_event_opcode = queue_data[++data_ptr];
+    
+    if (hci_event_opcode == LE_META_EVENTS) {
+      // set `data_ptr' to 4th entry, which will point to sub event
+      data_ptr += 2;
+      sub_event = queue_data[data_ptr++];
+      
+      // check if sub event is LE advertising report event
+      if (sub_event == HCI_LE_ADV_REPORT) {
+        // get number of advertising reports
+        num_responses = queue_data[data_ptr++];
+        
+        // Sanity check
+        if (num_responses > 32) {
+          ESP_LOGW(TAG, "Invalid num_responses: %u", num_responses);
+          continue;
+        }
 
-          // skip 2 bytes event type and advertising type for every report
-          data_ptr += 2 * num_responses;
+        // skip 2 bytes event type and advertising type for every report
+        data_ptr += 2 * num_responses;
 
-          // get device address in every advertising report and
-          // store in array of length `6 * num_responses' as each record
-          // contains 6 octets
-          // -> note: BD addresses are stored in little endian format!
-          // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 5.2
-          addr = (uint8_t *)malloc(sizeof(uint8_t) * 6 * num_responses);
-          if (addr == NULL) {
-            ESP_LOGE(TAG, "Malloc addr failed");
-            goto reset;
+        // get device address in every advertising report
+        // -> note: BD addresses are stored in little endian format!
+        // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 5.2
+        for (uint8_t i = 0; i < num_responses; i++) {
+          for (uint8_t j = 5; j < 6; j--) {  // j--; but since j is unsigned, use j < 6
+            addr_buffer[(6 * i) + j] = queue_data[data_ptr++];
           }
-          for (int i = 0; i < num_responses; i += 1) {
-            for (int j = 5; j >= 0; j -= 1) {
-              addr[(6 * i) + j] = queue_data[data_ptr++];
-            }
+        }
+
+        // get length of data for each advertising report
+        for (uint8_t i = 0; i < num_responses; i++) {
+          total_data_len += queue_data[data_ptr++];
+        }
+
+        // skip all data packets
+        data_ptr += total_data_len;
+
+        // Count each advertising report within rssi threshold
+        for (uint8_t i = 0; i < num_responses; i++) {
+          rssi = -(0xFF - queue_data[data_ptr++]);
+          
+          // Early exit on RSSI threshold (common case)
+          if (ble_rssi_threshold != 0 && rssi < ble_rssi_threshold) {
+            continue;
           }
-
-          // get length of data for each advertising report
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            total_data_len += queue_data[data_ptr++];
-          }
-
-          // skip all data packets
-          data_ptr += total_data_len;
-
-          // Count each advertising report within rssi threshold
-          for (uint8_t i = 0; i < num_responses; i += 1) {
-            rssi = -(0xFF - queue_data[data_ptr++]);
-            if (ble_rssi_threshold && (rssi < ble_rssi_threshold))
-              continue;  // do not count weak signal mac
-            else {
-              mac_add(addr + 6 * i, MAC_SNIFF_BLE);
-            }
-          }
-
-        // freeing all spaces allocated
-        reset:
-          free(addr);
+          
+          mac_add(addr_buffer + 6 * i, MAC_SNIFF_BLE);
         }
       }
-      free(queue_data);
     }
   }
 }
