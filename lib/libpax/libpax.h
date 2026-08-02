@@ -30,6 +30,5 @@ int libpax_ble_counter_count();
 void libpax_counter_reset();
 void reset_bucket();
 int mac_add(uint8_t *paddr, snifftype_t sniff_type);
-int add_to_bucket(uint16_t id);
 
 #endif

@@ -38,8 +38,7 @@ static inline void fill_counter(struct count_payload_t* pCount) {
 void libpax_counter_reset() {
   macs_wifi = 0;
   macs_ble = 0;
-  memset(seen_ids_map, 0, sizeof(seen_ids_map));
-  seen_ids_count = 0;
+  reset_bucket();
 }
 
 // Optimized timer callback with minimal overhead
@@ -136,9 +135,8 @@ int libpax_update_config(struct libpax_config_t* configuration) {
     
     // this if to keep v1.0.1 backward compatibility
     if (current_config.wifi_my_country_str[0] == '\0') {
-      const char country[] = current_config.wifi_my_country ? "DE" : "01";
-      memcpy(current_config.wifi_my_country_str, country, 
-             sizeof(country) > 3 ? 3 : sizeof(country));
+      const char* country = current_config.wifi_my_country ? "DE" : "01";
+      memcpy(current_config.wifi_my_country_str, country, 3);
     }
     config_set = 1;
   }
