@@ -38,16 +38,6 @@ uint16_t macs_ble = 0;
 
 uint8_t channel = 0;  // channel rotation counter
 
-// Inline bit operations for maximum performance
-static inline IRAM_ATTR void set_id(bitmap_t *bitmap, uint16_t id) {
-  bitmap[WORD_OFFSET(id)] |= ((bitmap_t)1 << BIT_OFFSET(id));
-}
-
-static inline IRAM_ATTR int get_id(bitmap_t *bitmap, uint16_t id) {
-  bitmap_t bit = bitmap[WORD_OFFSET(id)] & ((bitmap_t)1 << BIT_OFFSET(id));
-  return bit != 0;
-}
-
 /** remember given id in the bitmap for the given sniff type
  * returns 1 if id is new, 0 if already seen this is since last reset
  * Hot-path critical function - highly optimized
