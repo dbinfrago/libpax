@@ -66,6 +66,9 @@ void libpax_serialize_config(char* store_addr,
 
 int libpax_deserialize_config(char* source,
                               struct libpax_config_t* configuration) {
+  // Caller contract: source must point to at least LIBPAX_CONFIG_SIZE bytes
+  // (see libpax_api.h); the static_assert in libpax.h keeps that contract
+  // in sync with the actual struct size at compile time.
   struct libpax_config_storage_t storage_buffer;
   memcpy(&storage_buffer, source, sizeof(struct libpax_config_storage_t));
   if (storage_buffer.major_version != CONFIG_MAJOR_VERSION) {

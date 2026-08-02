@@ -63,19 +63,21 @@ static void controller_rcv_pkt_ready(void) {
  */
 static int host_rcv_pkt(uint8_t *data, uint16_t len) {
   host_rcv_data_t send_data;
-  
-  /* Check second byte for HCI event. If event opcode is 0x0e, the event is
-   * HCI Command Complete event. Since we have received "0x0e" event, we can
-   * check for byte 4 for command opcode and byte 6 for it's return status. */
-  if (data[1] == 0x0e && data[6] != 0) {
-    ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", 
-             data[4], data[6]);
-    return ESP_FAIL;
-  }
 
   if (len > BLE_MAX_PACKET_SIZE) {
     ESP_LOGE(TAG, "BLE packet too large for queue item (%u > %u)", len,
              (unsigned)BLE_MAX_PACKET_SIZE);
+    return ESP_FAIL;
+  }
+
+  /* Check second byte for HCI event. If event opcode is 0x0e, the event is
+   * HCI Command Complete event. Since we have received "0x0e" event, we can
+   * check for byte 4 for command opcode and byte 6 for it's return status.
+   * Requires len > 6, checked first since data[6] would otherwise be an
+   * out-of-bounds read for shorter packets. */
+  if (len > 6 && data[1] == 0x0e && data[6] != 0) {
+    ESP_LOGE(TAG, "Event opcode 0x%02x fail with reason: 0x%02x.", 
+             data[4], data[6]);
     return ESP_FAIL;
   }
 
@@ -137,8 +139,10 @@ static host_rcv_data_t rcv_data_buffer;
 static uint8_t addr_buffer[6 * 32];  // Max 32 responses per event
 
 void hci_evt_process(void *pvParameters) {
-  uint8_t sub_event, num_responses, total_data_len, hci_event_opcode;
+  uint8_t sub_event, num_responses, hci_event_opcode;
+  uint16_t total_data_len;  // sum of up to 32 per-report lengths, must not be uint8_t (overflows)
   uint16_t data_ptr;
+  uint16_t q_len;
   int8_t rssi;  // Use signed int8_t for RSSI values
 
   while (1) {
@@ -152,6 +156,15 @@ void hci_evt_process(void *pvParameters) {
 
     queue_data = rcv_data_buffer.q_data;
     data_ptr = 0;
+    q_len = rcv_data_buffer.q_data_len;
+
+    // Bail out before reading the header fields below if the packet is too
+    // short to hold them; queue_data is a reused static buffer, so without
+    // this check a truncated packet would make us parse stale bytes left
+    // over from a previous, larger packet.
+    if (q_len < 5) {
+      continue;
+    }
 
     // Parsing `data' and copying in various fields
     // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 7.7.65.2
@@ -176,6 +189,14 @@ void hci_evt_process(void *pvParameters) {
         // skip 2 bytes event type and advertising type for every report
         data_ptr += 2 * num_responses;
 
+        // Each stage below is bounds-checked against q_len before indexing
+        // queue_data, so a malformed/truncated report can't read stale data
+        // left over from a previous packet in the reused buffer.
+        if (data_ptr + 6 * num_responses > q_len) {
+          ESP_LOGW(TAG, "Truncated adv report: missing address fields");
+          continue;
+        }
+
         // get device address in every advertising report
         // -> note: BD addresses are stored in little endian format!
         // see # Bluetooth Specification v5.0, Vol 2, Part E, sec 5.2
@@ -185,6 +206,11 @@ void hci_evt_process(void *pvParameters) {
           }
         }
 
+        if (data_ptr + num_responses > q_len) {
+          ESP_LOGW(TAG, "Truncated adv report: missing data-length fields");
+          continue;
+        }
+
         // get length of data for each advertising report
         for (uint8_t i = 0; i < num_responses; i++) {
           total_data_len += queue_data[data_ptr++];
@@ -192,6 +218,11 @@ void hci_evt_process(void *pvParameters) {
 
         // skip all data packets
         data_ptr += total_data_len;
+
+        if (data_ptr + num_responses > q_len) {
+          ESP_LOGW(TAG, "Truncated adv report: missing rssi fields");
+          continue;
+        }
 
         // Count each advertising report within rssi threshold
         for (uint8_t i = 0; i < num_responses; i++) {
