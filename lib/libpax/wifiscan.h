@@ -23,6 +23,7 @@ typedef struct {
 void set_wifi_country(const char* country_code);
 void set_wifi_country(uint8_t cc);
 void set_wifi_channels(uint16_t channels_map);
+void wifi_sniffer_set_start_channel();
 void set_wifi_rssi_filter(int set_rssi_threshold);
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval);

@@ -93,6 +93,21 @@ void set_wifi_channels(uint16_t set_channels_map) {
   channels_map = set_channels_map;
 }
 
+// Puts the radio on the first enabled channel right away, instead of
+// leaving it on the driver's default channel (which may not be in
+// channels_map) for up to one full dwell interval until the rotation
+// timer fires for the first time. Must be called after set_wifi_country()
+// and set_wifi_channels() so country.nchan/channels_map are already set.
+void wifi_sniffer_set_start_channel() {
+  for (uint8_t ch = 1; ch <= country.nchan; ch++) {
+    if (channels_map >> (ch - 1) & 1) {
+      channel = ch;
+      esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+      return;
+    }
+  }
+}
+
 void set_wifi_rssi_filter(int set_rssi_threshold) {
   wifi_rssi_threshold = set_rssi_threshold;
 }

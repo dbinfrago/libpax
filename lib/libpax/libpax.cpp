@@ -26,7 +26,11 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 
 // The bitmap requires 2**16 = 65536 entries,
 // while using 32 bit integers, we need 65536 / 32 = 2048 integers
-DRAM_ATTR bitmap_t seen_ids_map[2048];
+// Separate maps per sniff type: a shared map would let a WiFi id and an
+// unrelated BLE id collide with each other, doubling the effective
+// collision rate whenever both radios are active at once.
+DRAM_ATTR bitmap_t seen_ids_map_wifi[2048];
+DRAM_ATTR bitmap_t seen_ids_map_ble[2048];
 int seen_ids_count = 0;
 
 uint16_t macs_wifi = 0;
@@ -44,25 +48,27 @@ static inline IRAM_ATTR int get_id(bitmap_t *bitmap, uint16_t id) {
   return bit != 0;
 }
 
-/** remember given id
+/** remember given id in the bitmap for the given sniff type
  * returns 1 if id is new, 0 if already seen this is since last reset
  * Hot-path critical function - highly optimized
  */
-static inline IRAM_ATTR int add_to_bucket(uint16_t id) {
+static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
+  bitmap_t *map = (sniff_type == MAC_SNIFF_BLE) ? seen_ids_map_ble : seen_ids_map_wifi;
   uint16_t word_idx = WORD_OFFSET(id);
   uint32_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
-  
-  if (seen_ids_map[word_idx] & bit_mask) {
+
+  if (map[word_idx] & bit_mask) {
     return 0;  // already seen
   }
-  
-  seen_ids_map[word_idx] |= bit_mask;
+
+  map[word_idx] |= bit_mask;
   seen_ids_count++;
   return 1;  // new
 }
 
 void reset_bucket() {
-  memset(seen_ids_map, 0, sizeof(seen_ids_map));
+  memset(seen_ids_map_wifi, 0, sizeof(seen_ids_map_wifi));
+  memset(seen_ids_map_ble, 0, sizeof(seen_ids_map_ble));
   seen_ids_count = 0;
 }
 
@@ -80,7 +86,7 @@ IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   // Use last 2 bytes of MAC address as ID (little-endian)
   uint16_t id = (paddr[5] << 8) | paddr[4];
   
-  int added = add_to_bucket(id);
+  int added = add_to_bucket(id, sniff_type);
   
   // Only update counters on new MAC (most calls return here)
   if (!added) return 0;

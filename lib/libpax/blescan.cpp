@@ -44,8 +44,20 @@ static inline uint8_t* ble_alloc_packet(uint16_t len) {
 
 static uint8_t hci_cmd_buf[128];
 
+// Number of in-flight HCI advertising reports the queue can hold before
+// the BT controller callback starts dropping them. Raised from 30 to give
+// more headroom under high device density, where accurate counting matters
+// most.
+#define BLE_ADV_QUEUE_SIZE 60
+
 static QueueHandle_t adv_queue;
 static TaskHandle_t hci_eventprocessor;
+
+// Count of advertising reports dropped because the queue was full, so the
+// queue size can be tuned based on real-world load instead of guessing.
+static volatile uint32_t ble_adv_dropped = 0;
+
+uint32_t get_ble_adv_dropped_count(void) { return ble_adv_dropped; }
 
 /*
  * @brief: BT controller callback function, used to notify the upper layer that
@@ -83,6 +95,7 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
   send_data.q_data_len = len;
   
   if (xQueueSend(adv_queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
+    ble_adv_dropped = ble_adv_dropped + 1;
     ESP_LOGD(TAG, "Failed to enqueue advertising report. Queue full.");
   }
   
@@ -224,15 +237,18 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
 #endif
 
     /* A queue for storing received HCI packets. */
-    adv_queue = xQueueCreate(30, sizeof(host_rcv_data_t));
+    ble_adv_dropped = 0;
+    adv_queue = xQueueCreate(BLE_ADV_QUEUE_SIZE, sizeof(host_rcv_data_t));
     if (adv_queue == NULL) {
       ESP_LOGE(TAG, "Queue creation failed");
       return;
     }
 
-    /* start HCI event processor task with prio 1 on core 0 */
+    /* start HCI event processor task with prio 1 on core 1, to avoid
+     * contending with the WiFi task (pinned to core 0, see
+     * wificfg.wifi_task_core_id in wifiscan.cpp) for CPU time. */
     xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
-                            &hci_eventprocessor, 0);
+                            &hci_eventprocessor, 1);
 
     esp_vhci_host_register_callback(&vhci_host_cb);
 

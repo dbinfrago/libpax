@@ -98,7 +98,8 @@ void libpax_default_config(struct libpax_config_t* configuration) {
   memcpy(configuration->wifi_my_country_str, default_country, 
          sizeof(default_country) > 3 ? 3 : sizeof(default_country));
   
-  configuration->wifi_channel_map = 0b100010100100100;
+  configuration->wifi_channel_map =
+      WIFI_CHANNEL_3 | WIFI_CHANNEL_6 | WIFI_CHANNEL_9 | WIFI_CHANNEL_11;
   configuration->wifi_channel_switch_interval = 50;
   configuration->wifi_rssi_threshold = 0;
   configuration->ble_rssi_threshold = 0;
@@ -192,6 +193,7 @@ int libpax_counter_start() {
     wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     set_wifi_country(current_config.wifi_my_country_str);
     set_wifi_channels(current_config.wifi_channel_map);
+    wifi_sniffer_set_start_channel();
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
   }
 
