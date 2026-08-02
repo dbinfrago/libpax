@@ -232,11 +232,9 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
       return;
     }
 
-    /* start HCI event processor task with prio 1 on core 1, to avoid
-     * contending with the WiFi task (pinned to core 0, see
-     * wificfg.wifi_task_core_id in wifiscan.cpp) for CPU time. */
-    xTaskCreatePinnedToCore(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
-                            &hci_eventprocessor, 1);
+    /* start HCI event processor task with prio 1 */
+    xTaskCreate(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
+                &hci_eventprocessor);
 
     esp_vhci_host_register_callback(&vhci_host_cb);
 
