@@ -19,28 +19,18 @@
 int initialized_ble = 0;
 int ble_rssi_threshold = 0;
 
-typedef struct {
-  uint8_t *q_data;
-  uint16_t q_data_len;
-} host_rcv_data_t;
-
 // Pre-allocated buffers to avoid malloc overhead in hot path
 #define BLE_MAX_PACKET_SIZE 256
-#define BLE_QUEUE_SIZE 16
 
-// Pool of pre-allocated packets
-static uint8_t ble_packet_pool[BLE_QUEUE_SIZE][BLE_MAX_PACKET_SIZE];
-static uint8_t pool_index = 0;
-static uint8_t pool_lock = 0;
-
-// Fast allocation from pool instead of malloc
-static inline uint8_t* ble_alloc_packet(uint16_t len) {
-  if (len > BLE_MAX_PACKET_SIZE) return NULL;
-  
-  uint8_t idx = pool_index;
-  pool_index = (pool_index + 1) % BLE_QUEUE_SIZE;
-  return ble_packet_pool[idx];
-}
+// The packet bytes are embedded directly in the queue item (copied by value
+// on xQueueSend/xQueueReceive) instead of pointing into a small shared pool.
+// A pool sized independently of the queue depth allowed an in-flight, still
+// unprocessed entry's backing buffer to be overwritten by a newer packet
+// before it was read, corrupting parsed MAC addresses/counts.
+typedef struct {
+  uint8_t q_data[BLE_MAX_PACKET_SIZE];
+  uint16_t q_data_len;
+} host_rcv_data_t;
 
 static uint8_t hci_cmd_buf[128];
 
@@ -83,15 +73,13 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
     return ESP_FAIL;
   }
 
-  // Use pre-allocated buffer pool instead of malloc
-  uint8_t *data_pkt = ble_alloc_packet(len);
-  if (data_pkt == NULL) {
-    ESP_LOGE(TAG, "BLE packet buffer exhausted");
+  if (len > BLE_MAX_PACKET_SIZE) {
+    ESP_LOGE(TAG, "BLE packet too large for queue item (%u > %u)", len,
+             (unsigned)BLE_MAX_PACKET_SIZE);
     return ESP_FAIL;
   }
-  
-  memcpy(data_pkt, data, len);
-  send_data.q_data = data_pkt;
+
+  memcpy(send_data.q_data, data, len);
   send_data.q_data_len = len;
   
   if (xQueueSend(adv_queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
