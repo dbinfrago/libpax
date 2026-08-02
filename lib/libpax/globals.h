@@ -5,7 +5,6 @@
 #include "esp_log.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
-#include <freertos/timers.h>
 #else // Arduino IDE
 #include <Arduino.h>
 #endif
