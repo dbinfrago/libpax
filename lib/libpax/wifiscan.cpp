@@ -171,6 +171,9 @@ void wifi_sniffer_stop() {
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
     esp_wifi_deinit();
     initialized_wifi = 0;
+    // reset so the next start deterministically begins at the first
+    // enabled channel, instead of resuming rotation where it left off
+    channel = 0;
   }
 #endif
 }
