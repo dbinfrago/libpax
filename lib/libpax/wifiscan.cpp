@@ -62,7 +62,7 @@ static IRAM_ATTR void wifi_sniffer_packet_handler(
 }
 
 // Optimized channel rotation with minimal overhead
-IRAM_ATTR void switchWifiChannel(TimerHandle_t xTimer) {
+IRAM_ATTR void switchWifiChannel(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
   // Guard against an infinite loop below if no channel is enabled
   if (channels_map == 0) return;
 
