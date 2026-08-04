@@ -17,7 +17,9 @@
 #endif
 
 int initialized_ble = 0;
-int ble_rssi_threshold = 0;
+// volatile: set once by the app task, read on every advertising report
+// from the HCI event processor task
+volatile int ble_rssi_threshold = 0;
 
 // Pre-allocated buffers to avoid malloc overhead in hot path
 #define BLE_MAX_PACKET_SIZE 256

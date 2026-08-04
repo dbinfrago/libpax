@@ -38,10 +38,10 @@ DRAM_ATTR bitmap_t seen_ids_map_wifi[2048];
 DRAM_ATTR bitmap_t seen_ids_map_ble[2048];
 #endif
 
-uint16_t macs_wifi = 0;
-uint16_t macs_ble = 0;
+volatile uint16_t macs_wifi = 0;
+volatile uint16_t macs_ble = 0;
 
-uint8_t channel = 0;  // channel rotation counter
+volatile uint8_t channel = 0;  // channel rotation counter
 
 /** remember given id in the bitmap for the given sniff type
  * returns 1 if id is new, 0 if already seen this is since last reset

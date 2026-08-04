@@ -35,8 +35,10 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
-int wifi_rssi_threshold = 0;
-uint16_t channels_map = WIFI_CHANNEL_ALL;
+// volatile: set once by the app task, read on every packet from the RX
+// callback context / on every timer tick from the timer task
+volatile int wifi_rssi_threshold = 0;
+volatile uint16_t channels_map = WIFI_CHANNEL_ALL;
 static wifi_country_t country;
 
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}
