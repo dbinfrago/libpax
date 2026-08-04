@@ -31,7 +31,6 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 // collision rate whenever both radios are active at once.
 DRAM_ATTR bitmap_t seen_ids_map_wifi[2048];
 DRAM_ATTR bitmap_t seen_ids_map_ble[2048];
-int seen_ids_count = 0;
 
 uint16_t macs_wifi = 0;
 uint16_t macs_ble = 0;
@@ -52,14 +51,12 @@ static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
   }
 
   map[word_idx] |= bit_mask;
-  seen_ids_count++;
   return 1;  // new
 }
 
 void reset_bucket() {
   memset(seen_ids_map_wifi, 0, sizeof(seen_ids_map_wifi));
   memset(seen_ids_map_ble, 0, sizeof(seen_ids_map_ble));
-  seen_ids_count = 0;
 }
 
 int libpax_wifi_counter_count() { return macs_wifi; }
