@@ -36,7 +36,7 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 TimerHandle_t WifiChanTimer;
 int initialized_wifi = 0;
 int wifi_rssi_threshold = 0;
-uint16_t channels_map = WIFI_CHANNEL_ALL;
+uint16_t channels_map = LIBPAX_WIFI_CHANNEL_ALL;
 static wifi_country_t country;
 
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}
