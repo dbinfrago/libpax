@@ -29,8 +29,14 @@ enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 // Separate maps per sniff type: a shared map would let a WiFi id and an
 // unrelated BLE id collide with each other, doubling the effective
 // collision rate whenever both radios are active at once.
+// Each map is only allocated when its sniffer is actually built in, so a
+// WiFi-only or BLE-only build doesn't waste 8 KiB of DRAM on the other map.
+#if defined(LIBPAX_WIFI)
 DRAM_ATTR bitmap_t seen_ids_map_wifi[2048];
+#endif
+#if defined(LIBPAX_BLE)
 DRAM_ATTR bitmap_t seen_ids_map_ble[2048];
+#endif
 
 uint16_t macs_wifi = 0;
 uint16_t macs_ble = 0;
@@ -42,7 +48,16 @@ uint8_t channel = 0;  // channel rotation counter
  * Hot-path critical function - highly optimized
  */
 static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
-  bitmap_t *map = (sniff_type == MAC_SNIFF_BLE) ? seen_ids_map_ble : seen_ids_map_wifi;
+  bitmap_t *map;
+#if defined(LIBPAX_WIFI) && defined(LIBPAX_BLE)
+  map = (sniff_type == MAC_SNIFF_BLE) ? seen_ids_map_ble : seen_ids_map_wifi;
+#elif defined(LIBPAX_BLE)
+  map = seen_ids_map_ble;
+#elif defined(LIBPAX_WIFI)
+  map = seen_ids_map_wifi;
+#else
+  return 0;  // neither sniffer built in, nothing to track
+#endif
   uint16_t word_idx = WORD_OFFSET(id);
   uint32_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
 
@@ -55,8 +70,12 @@ static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
 }
 
 void reset_bucket() {
+#if defined(LIBPAX_WIFI)
   memset(seen_ids_map_wifi, 0, sizeof(seen_ids_map_wifi));
+#endif
+#if defined(LIBPAX_BLE)
   memset(seen_ids_map_ble, 0, sizeof(seen_ids_map_ble));
+#endif
 }
 
 int libpax_wifi_counter_count() { return macs_wifi; }
