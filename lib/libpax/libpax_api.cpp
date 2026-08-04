@@ -36,8 +36,6 @@ static inline void fill_counter(struct count_payload_t* pCount) {
 }
 
 void libpax_counter_reset() {
-  macs_wifi = 0;
-  macs_ble = 0;
   reset_bucket();
 }
 

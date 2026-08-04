@@ -43,6 +43,11 @@ volatile uint16_t macs_ble = 0;
 
 volatile uint8_t channel = 0;  // channel rotation counter
 
+// Guards the seen_ids maps: add_to_bucket() (WiFi/BLE RX task, either core)
+// sets individual bits while reset_bucket() (report timer task) memsets the
+// whole map, so without this a reset could race with a concurrent bit-set.
+static portMUX_TYPE bucket_mux = portMUX_INITIALIZER_UNLOCKED;
+
 /** remember given id in the bitmap for the given sniff type
  * returns 1 if id is new, 0 if already seen this is since last reset
  * Hot-path critical function - highly optimized
@@ -61,21 +66,27 @@ static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
   uint16_t word_idx = WORD_OFFSET(id);
   uint32_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
 
-  if (map[word_idx] & bit_mask) {
-    return 0;  // already seen
+  portENTER_CRITICAL(&bucket_mux);
+  bool already_seen = map[word_idx] & bit_mask;
+  if (!already_seen) {
+    map[word_idx] |= bit_mask;
   }
+  portEXIT_CRITICAL(&bucket_mux);
 
-  map[word_idx] |= bit_mask;
-  return 1;  // new
+  return already_seen ? 0 : 1;
 }
 
 void reset_bucket() {
+  portENTER_CRITICAL(&bucket_mux);
+  macs_wifi = 0;
+  macs_ble = 0;
 #if defined(LIBPAX_WIFI)
   memset(seen_ids_map_wifi, 0, sizeof(seen_ids_map_wifi));
 #endif
 #if defined(LIBPAX_BLE)
   memset(seen_ids_map_ble, 0, sizeof(seen_ids_map_ble));
 #endif
+  portEXIT_CRITICAL(&bucket_mux);
 }
 
 int libpax_wifi_counter_count() { return macs_wifi; }
@@ -97,12 +108,15 @@ IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   // Only update counters on new MAC (most calls return here)
   if (!added) return 0;
   
-  // Update appropriate counter based on type
+  // Update appropriate counter based on type; guarded so a concurrent
+  // reset_bucket() reset can't race with the increment
+  portENTER_CRITICAL(&bucket_mux);
   if (sniff_type == MAC_SNIFF_BLE) {
     macs_ble++;
   } else if (sniff_type == MAC_SNIFF_WIFI) {
     macs_wifi++;
   }
+  portEXIT_CRITICAL(&bucket_mux);
   
   return 1;
 }
