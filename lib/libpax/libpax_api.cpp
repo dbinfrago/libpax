@@ -194,7 +194,7 @@ int libpax_counter_start() {
     wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     set_wifi_country(current_config.wifi_my_country_str);
     set_wifi_channels(current_config.wifi_channel_map);
-    wifi_sniffer_set_start_channel();
+    switchWifiChannel(NULL);
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
   }
 

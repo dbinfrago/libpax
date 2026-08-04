@@ -23,7 +23,10 @@ typedef struct {
 void set_wifi_country(const char* country_code);
 void set_wifi_country(uint8_t cc);
 void set_wifi_channels(uint16_t channels_map);
-void wifi_sniffer_set_start_channel();
+// Puts the radio on the first enabled channel right away, instead of
+// leaving it on the driver's default channel for up to one full dwell
+// interval. Must be called after set_wifi_country()/set_wifi_channels().
+void switchWifiChannel(TimerHandle_t xTimer);
 void set_wifi_rssi_filter(int set_rssi_threshold);
 
 void wifi_sniffer_init(uint16_t wifi_channel_switch_interval);
