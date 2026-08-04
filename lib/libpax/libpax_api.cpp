@@ -42,7 +42,7 @@ void libpax_counter_reset() {
 }
 
 // Optimized timer callback with minimal overhead
-IRAM_ATTR void report(TimerHandle_t xTimer) {
+IRAM_ATTR void report(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
   fill_counter(pCurrent_count);
   report_callback();
   
