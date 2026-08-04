@@ -63,6 +63,9 @@ static IRAM_ATTR void wifi_sniffer_packet_handler(
 
 // Optimized channel rotation with minimal overhead
 IRAM_ATTR void switchWifiChannel(TimerHandle_t xTimer) {
+  // Guard against an infinite loop below if no channel is enabled
+  if (channels_map == 0) return;
+
   // Pre-computed next channel, avoid modulo operation
   uint8_t next_channel = (channel >= country.nchan) ? 1 : (channel + 1);
   
