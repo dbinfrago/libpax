@@ -23,6 +23,12 @@ struct libpax_config_storage_t {
     uint8_t checksum[4]; 
 };
 
+// libpax_(de)serialize_config() take only a raw pointer, not a length, so
+// callers rely on this struct never exceeding the documented contract size.
+static_assert(sizeof(struct libpax_config_storage_t) == LIBPAX_CONFIG_SIZE,
+              "libpax_config_storage_t must match LIBPAX_CONFIG_SIZE, the "
+              "buffer size callers of libpax_(de)serialize_config() rely on");
+
 typedef enum { MAC_SNIFF_WIFI, MAC_SNIFF_BLE, MAC_SNIFF_BLE_ENS } snifftype_t;
 
 int libpax_wifi_counter_count();
@@ -30,6 +36,5 @@ int libpax_ble_counter_count();
 void libpax_counter_reset();
 void reset_bucket();
 int mac_add(uint8_t *paddr, snifftype_t sniff_type);
-int add_to_bucket(uint16_t id);
 
 #endif
