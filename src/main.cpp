@@ -13,7 +13,7 @@ void init() {
   configuration.blecounter = 1;
   configuration.blescantime = 0; // infinit
   configuration.wificounter = 1; 
-  configuration.wifi_channel_map = WIFI_CHANNEL_ALL;
+  configuration.wifi_channel_map = LIBPAX_WIFI_CHANNEL_ALL;
   configuration.wifi_channel_switch_interval = 50;
   configuration.wifi_rssi_threshold = -80;
   configuration.ble_rssi_threshold = -80;
