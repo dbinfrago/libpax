@@ -22,27 +22,28 @@ limitations under the License.
 #include "wifiscan.h"
 
 struct libpax_config_t current_config;
-int config_set = 0;
+volatile int config_set = 0;  // volatile since accessed from ISR context
 
 void (*report_callback)(void);
 struct count_payload_t* pCurrent_count;
 int counter_mode;
 
-void fill_counter(struct count_payload_t* pCount) {
-  pCount->wifi_count = libpax_wifi_counter_count();
-  pCount->ble_count = libpax_ble_counter_count();
+// Inline fast counter read
+static inline void fill_counter(struct count_payload_t* pCount) {
+  pCount->wifi_count = macs_wifi;
+  pCount->ble_count = macs_ble;
   pCount->pax = pCount->wifi_count + pCount->ble_count;
 }
 
 void libpax_counter_reset() {
-  macs_wifi = 0;
-  macs_ble = 0;
   reset_bucket();
 }
 
-void report(TimerHandle_t xTimer) {
+// Optimized timer callback with minimal overhead
+IRAM_ATTR void report(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
   fill_counter(pCurrent_count);
   report_callback();
+  
   // clear counter if not in cumulative counter mode
   if (counter_mode != 1) {
     libpax_counter_reset();
@@ -63,6 +64,9 @@ void libpax_serialize_config(char* store_addr,
 
 int libpax_deserialize_config(char* source,
                               struct libpax_config_t* configuration) {
+  // Caller contract: source must point to at least LIBPAX_CONFIG_SIZE bytes
+  // (see libpax_api.h); the static_assert in libpax.h keeps that contract
+  // in sync with the actual struct size at compile time.
   struct libpax_config_storage_t storage_buffer;
   memcpy(&storage_buffer, source, sizeof(struct libpax_config_storage_t));
   if (storage_buffer.major_version != CONFIG_MAJOR_VERSION) {
@@ -89,8 +93,14 @@ void libpax_default_config(struct libpax_config_t* configuration) {
   memset(configuration, 0, sizeof(struct libpax_config_t));
   configuration->blecounter = 0;
   configuration->wificounter = 1;
-  strcpy(configuration->wifi_my_country_str, "01");
-  configuration->wifi_channel_map = 0b100010100100100;
+  
+  // Use memcpy instead of strcpy for performance and safety
+  const char default_country[] = "01";
+  memcpy(configuration->wifi_my_country_str, default_country, 
+         sizeof(default_country) > 3 ? 3 : sizeof(default_country));
+  
+  configuration->wifi_channel_map =
+      WIFI_CHANNEL_3 | WIFI_CHANNEL_6 | WIFI_CHANNEL_9 | WIFI_CHANNEL_11;
   configuration->wifi_channel_switch_interval = 50;
   configuration->wifi_rssi_threshold = 0;
   configuration->ble_rssi_threshold = 0;
@@ -110,7 +120,7 @@ int libpax_update_config(struct libpax_config_t* configuration) {
   if (configuration->wificounter) {
     ESP_LOGE("libpax",
              "Configuration requests Wi-Fi but was disabled at compile time.");
-    result &= LIBPAX_ERROR_WIFI_NOT_AVAILABLE;
+    result |= LIBPAX_ERROR_WIFI_NOT_AVAILABLE;
   }
 #endif
 
@@ -118,16 +128,17 @@ int libpax_update_config(struct libpax_config_t* configuration) {
   if (configuration->blecounter) {
     ESP_LOGE("libpax",
              "Configuration requests BLE but was disabled at compile time.");
-    result &= LIBPAX_ERROR_BLE_NOT_AVAILABLE;
+    result |= LIBPAX_ERROR_BLE_NOT_AVAILABLE;
   }
 #endif
 
   if (result == 0) {
     memcpy(&current_config, configuration, sizeof(struct libpax_config_t));
+    
     // this if to keep v1.0.1 backward compatibility
-    if (strcmp(current_config.wifi_my_country_str, "")) {
-      strcpy(current_config.wifi_my_country_str,
-             current_config.wifi_my_country ? "DE" : "01");
+    if (current_config.wifi_my_country_str[0] == '\0') {
+      const char* country = current_config.wifi_my_country ? "DE" : "01";
+      memcpy(current_config.wifi_my_country_str, country, 3);
     }
     config_set = 1;
   }
@@ -183,6 +194,7 @@ int libpax_counter_start() {
     wifi_sniffer_init(current_config.wifi_channel_switch_interval);
     set_wifi_country(current_config.wifi_my_country_str);
     set_wifi_channels(current_config.wifi_channel_map);
+    switchWifiChannel(NULL);
     set_wifi_rssi_filter(current_config.wifi_rssi_threshold);
   }
 
