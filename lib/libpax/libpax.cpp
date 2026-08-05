@@ -98,7 +98,7 @@ int libpax_ble_counter_count() { return macs_ble; }
  */
 IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   // Check locally administered bit first (cheapest check)
-  if (!(paddr[0] & 0x02)) return 0;  // 0x02 = locally administered bit
+  if (!(paddr[0] & 0b10)) return 0;
   
   // Use last 2 bytes of MAC address as ID (little-endian)
   uint16_t id = (paddr[5] << 8) | paddr[4];
