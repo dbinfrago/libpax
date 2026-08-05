@@ -112,9 +112,9 @@ IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   // reset_bucket() reset can't race with the increment
   portENTER_CRITICAL(&bucket_mux);
   if (sniff_type == MAC_SNIFF_BLE) {
-    macs_ble++;
+    macs_ble = macs_ble + 1;
   } else if (sniff_type == MAC_SNIFF_WIFI) {
-    macs_wifi++;
+    macs_wifi = macs_wifi + 1;
   }
   portEXIT_CRITICAL(&bucket_mux);
   
