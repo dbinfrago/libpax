@@ -39,8 +39,8 @@ void libpax_counter_reset() {
   reset_bucket();
 }
 
-// Optimized timer callback with minimal overhead
-IRAM_ATTR void report(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
+// Timer callback (not a hot path); kept out of IRAM to leave room for the packet handlers
+void report(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
   fill_counter(pCurrent_count);
   report_callback();
   
@@ -100,7 +100,7 @@ void libpax_default_config(struct libpax_config_t* configuration) {
          sizeof(default_country) > 3 ? 3 : sizeof(default_country));
   
   configuration->wifi_channel_map =
-      WIFI_CHANNEL_3 | WIFI_CHANNEL_6 | WIFI_CHANNEL_9 | WIFI_CHANNEL_11;
+      LIBPAX_WIFI_CHANNEL_3 | LIBPAX_WIFI_CHANNEL_6 | LIBPAX_WIFI_CHANNEL_9 | LIBPAX_WIFI_CHANNEL_11;
   configuration->wifi_channel_switch_interval = 50;
   configuration->wifi_rssi_threshold = 0;
   configuration->ble_rssi_threshold = 0;
