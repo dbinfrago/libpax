@@ -38,7 +38,7 @@ int initialized_wifi = 0;
 // volatile: set once by the app task, read on every packet from the RX
 // callback context / on every timer tick from the timer task
 volatile int wifi_rssi_threshold = 0;
-volatile uint16_t channels_map = WIFI_CHANNEL_ALL;
+volatile uint16_t channels_map = LIBPAX_WIFI_CHANNEL_ALL;
 static wifi_country_t country;
 
 void wifi_noop_sniffer(void* buff, wifi_promiscuous_pkt_type_t type) {}

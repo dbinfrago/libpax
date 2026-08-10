@@ -11,10 +11,10 @@ idf_component_register(SRCS ${app_sources}
     REQUIRES nvs_flash bt spi_flash)
 
 # Performance optimization flags
+# -funroll-loops intentionally omitted: it inflates code size and overflowed IRAM
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -O3
     -finline-functions
-    -funroll-loops
     -flto
     -ffunction-sections
     -fdata-sections
