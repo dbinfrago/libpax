@@ -61,12 +61,9 @@ static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
   uint16_t word_idx = WORD_OFFSET(id);
   uint8_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
 
-  bool already_seen = map[word_idx] & bit_mask;
-  if (!already_seen) {
-    map[word_idx] |= bit_mask;
-  }
+  bitmap_t previous = __atomic_fetch_or(&map[word_idx], bit_mask, __ATOMIC_RELAXED);
 
-  return already_seen ? 0 : 1;
+  return (previous & bit_mask) ? 0 : 1;
 }
 
 void reset_bucket() {
