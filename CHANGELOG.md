@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Protect start function from being executed when libpax is already started
 
+## [2.0.0] - 2026-08-27
+- Rename WIFI_CHANNEL_* to LIBPAX_WIFI_CHANNEL_*
+- Perfomance optimizations
+- Resolve race-conditions
+- Update Espressiv framework to version 6.13.0
+
 ## [1.1.1] - 2025-09-21
 - Avoid an integer overflow in the pdMS_TO_TICKS macro. Use portTICK_PERIOD_MS as workaround instead
 - bugfix seen_ids_map array size
