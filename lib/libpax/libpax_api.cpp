@@ -27,6 +27,8 @@ volatile int config_set = 0;  // volatile since accessed from ISR context
 void (*report_callback)(void);
 struct count_payload_t* pCurrent_count;
 int counter_mode;
+// cleared on stop so a late report timer callback does nothing
+static volatile bool report_enabled = false;
 
 // Inline fast counter read
 static inline void fill_counter(struct count_payload_t* pCount) {
@@ -41,6 +43,7 @@ void libpax_counter_reset() {
 
 // Timer callback (not a hot path); kept out of IRAM to leave room for the packet handlers
 void report(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
+  if (!report_enabled) return;
   fill_counter(pCurrent_count);
   report_callback();
   
@@ -150,7 +153,7 @@ int libpax_counter_init(void (*init_callback)(void),
                         struct count_payload_t* init_current_count,
                         uint16_t init_pax_report_interval_sec,
                         int init_counter_mode) {
-  if (PaxReportTimer != NULL && xTimerIsTimerActive(PaxReportTimer)) {
+  if (report_enabled) {
     ESP_LOGW("libpax", "lib already active. Ignoring new init.");
     return -1;
   }
@@ -161,10 +164,23 @@ int libpax_counter_init(void (*init_callback)(void),
 
   libpax_counter_reset();
 
-  PaxReportTimer = xTimerCreate(
-      "PaxReportTimer", (init_pax_report_interval_sec * 1000) / portTICK_PERIOD_MS,
-      pdTRUE, (void*)0, report);
-  xTimerStart(PaxReportTimer, 0);
+  TickType_t period = (init_pax_report_interval_sec * 1000) / portTICK_PERIOD_MS;
+  // created once and reused, so a restart never leaks or duplicates it
+  if (PaxReportTimer == NULL) {
+    PaxReportTimer =
+        xTimerCreate("PaxReportTimer", period, pdTRUE, (void*)0, report);
+    if (PaxReportTimer == NULL) {
+      ESP_LOGE("libpax", "report timer create failed");
+      return -1;
+    }
+  }
+  report_enabled = true;
+  // also starts the timer if it is dormant
+  if (xTimerChangePeriod(PaxReportTimer, period, pdMS_TO_TICKS(100)) != pdPASS) {
+    report_enabled = false;
+    ESP_LOGE("libpax", "report timer start failed");
+    return -1;
+  }
   return 0;
 }
 
@@ -203,15 +219,18 @@ int libpax_counter_start() {
 }
 
 int libpax_counter_stop() {
-  if (PaxReportTimer == NULL) {
+  if (!report_enabled) {
     ESP_LOGI("libpax", "libpax requested to stop, but not running.");
     return -1;
   }
   ESP_LOGI("libpax", "Stopping libpax.");
+  report_enabled = false;
   wifi_sniffer_stop();
   stop_BLE_scan();
-  xTimerStop(PaxReportTimer, 0);
-  PaxReportTimer = NULL;
+  // kept for reuse by the next init; if this fails the callback is a no-op
+  if (xTimerStop(PaxReportTimer, pdMS_TO_TICKS(100)) != pdPASS) {
+    ESP_LOGW("libpax", "report timer stop failed");
+  }
 
   libpax_state = LIBPAX_STOPPED;
   return 0;
