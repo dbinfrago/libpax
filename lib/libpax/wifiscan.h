@@ -29,7 +29,7 @@ void set_wifi_channels(uint16_t channels_map);
 void switchWifiChannel(TimerHandle_t xTimer);
 void set_wifi_rssi_filter(int set_rssi_threshold);
 
-void wifi_sniffer_init(uint16_t wifi_channel_switch_interval);
+void wifi_sniffer_init(uint16_t wifi_channel_switch_interval, uint8_t wifi_frame_filter_mode);
 void wifi_sniffer_stop();
 
 #endif

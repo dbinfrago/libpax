@@ -104,9 +104,9 @@ void test_config_store() {
   TEST_ASSERT_EQUAL(0, memcmp(configuration_memory, configuration_memory_second_run, LIBPAX_CONFIG_SIZE));
 
   // Test if memory in spare area is zeroed
-  uint8_t spare_cmp[23];
+  uint8_t spare_cmp[24];
   memset(spare_cmp, 0, sizeof(spare_cmp));
-  TEST_ASSERT_EQUAL(0, memcmp(((libpax_config_storage_t*)configuration_memory)->pad, spare_cmp, sizeof(spare_cmp)));
+  TEST_ASSERT_EQUAL(0, memcmp(((libpax_config_storage_t*)configuration_memory)->reserved_end, spare_cmp, sizeof(spare_cmp)));
 
   TEST_ASSERT_EQUAL(
       0, libpax_deserialize_config(configuration_memory, &read_configuration));
@@ -172,6 +172,7 @@ void test_integration() {
   test_stop();
 
   struct libpax_config_t gotConfiguration;
+  wifi_promiscuous_filter_t running_filter;
 
   libpax_get_current_config(&gotConfiguration);
   gotConfiguration.blecounter = 0;
@@ -189,6 +190,8 @@ void test_integration() {
   err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1);
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
+  esp_wifi_get_promiscuous_filter(&running_filter);
+  TEST_ASSERT_EQUAL(WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA, running_filter.filter_mask);
   test_stop();
 
   libpax_get_current_config(&gotConfiguration);
@@ -217,6 +220,19 @@ void test_integration() {
   TEST_ASSERT_EQUAL(0, err_code);
   test_callback();
   test_stop();
+
+  libpax_get_current_config(&gotConfiguration);
+  gotConfiguration.blecounter = 0;
+  gotConfiguration.wificounter = 1;
+  gotConfiguration.wifi_frame_filter_mode = 1;
+  libpax_update_config(&gotConfiguration);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1);
+  TEST_ASSERT_EQUAL(0, err_code);
+  test_callback();
+  esp_wifi_get_promiscuous_filter(&running_filter);
+  TEST_ASSERT_EQUAL(WIFI_PROMIS_FILTER_MASK_MGMT, running_filter.filter_mask);
+  test_stop();
+
 }
 
 void test_dual_start_with_ble() {
