@@ -102,7 +102,7 @@ void set_wifi_rssi_filter(int set_rssi_threshold) {
   wifi_rssi_threshold = set_rssi_threshold;
 }
 
-void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
+void wifi_sniffer_init(uint16_t wifi_channel_switch_interval, uint8_t wifi_frame_filter_mode) {
 #ifdef LIBPAX_WIFI
 
   // initialize NVS, is used to store wifi PHY calibration data
@@ -126,10 +126,13 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
   wificfg.dynamic_tx_buf_num = 4;
   wificfg.cache_tx_buf_num = 4;  // can't be zero!
 
+  uint32_t filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA;
+  if (wifi_frame_filter_mode == 1) {
+    filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT;
+  }
+
   // filter management and data frames to the sniffer
-  wifi_promiscuous_filter_t filter = {.filter_mask =
-                                          WIFI_PROMIS_FILTER_MASK_MGMT |
-                                          WIFI_PROMIS_FILTER_MASK_DATA};
+  wifi_promiscuous_filter_t filter = {.filter_mask = filter_mask };
 
   ESP_ERROR_CHECK(esp_wifi_init(&wificfg));  // configure Wifi with cfg
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));

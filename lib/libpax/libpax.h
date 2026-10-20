@@ -7,7 +7,7 @@
 #include "wifiscan.h"
 
 #define CONFIG_MAJOR_VERSION 1
-#define CONFIG_MINOR_VERSION 1
+#define CONFIG_MINOR_VERSION 2
 
 // Memory payload structure for persiting configurations
 struct libpax_config_storage_t {
@@ -15,11 +15,9 @@ struct libpax_config_storage_t {
     uint8_t minor_version;
     // ensure we start 32bit aligned with the actual config
     uint8_t reserved_start[2];
-    struct libpax_config_t config;
-    // Added for structure alignment
-    uint8_t pad[2];
+    struct libpax_config_t config; // 32 bytes
     // reserved for future use
-    uint8_t reserved_end[21];             
+    uint8_t reserved_end[24];
     uint8_t checksum[4]; 
 };
 

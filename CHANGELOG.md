@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Protect start function from being executed when libpax is already started
+- Added config option for only using management frames in wifi sniffer
 
 ## [1.1.1] - 2025-09-21
 - Avoid an integer overflow in the pdMS_TO_TICKS macro. Use portTICK_PERIOD_MS as workaround instead
