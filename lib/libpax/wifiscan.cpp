@@ -32,9 +32,10 @@ Which in turn is based of Łukasz Marcin Podkalicki's ESP32/016 WiFi Sniffer
 #include "globals.h"
 #include "libpax.h"
 #include "wifiscan.h"
+#include "esp_event.h"
 
 TimerHandle_t WifiChanTimer;
-int initialized_wifi = 0;
+volatile int initialized_wifi = 0;
 // volatile: set once by the app task, read on every packet from the RX
 // callback context / on every timer tick from the timer task
 volatile int wifi_rssi_threshold = 0;
@@ -67,6 +68,8 @@ static IRAM_ATTR void wifi_sniffer_packet_handler(
 IRAM_ATTR void switchWifiChannel(TimerHandle_t /* xTimer, required by TimerCallbackFunction_t signature */) {
   // Guard against an infinite loop below if no channel is enabled
   if (channels_map == 0) return;
+  // late timer callback after stop
+  if (!initialized_wifi) return;
 
   // Pre-computed next channel, avoid modulo operation
   uint8_t next_channel = (channel >= country.nchan) ? 1 : (channel + 1);
@@ -114,6 +117,11 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
   }
   ESP_ERROR_CHECK(ret);
 
+  // wifi driver posts events to the default event loop; may already exist
+  // (e.g. created by the Arduino framework or the application)
+  esp_err_t evt = esp_event_loop_create_default();
+  if (evt != ESP_ERR_INVALID_STATE) ESP_ERROR_CHECK(evt);
+
   // initialize wifi driver with settings tuned for sniffing
   wifi_init_config_t wificfg = WIFI_INIT_CONFIG_DEFAULT();
   wificfg.nvs_enable = 0;          // we don't need any wifi settings from NVRAM
@@ -140,12 +148,20 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));  // start sniffer mode
 
   // setup wifi channel rotation timer
+  // created once and reused, so a restart never leaks or duplicates it
   if (wifi_channel_switch_interval > 0) {
-    WifiChanTimer = xTimerCreate(
-        "WifiChannelTimer", pdMS_TO_TICKS(wifi_channel_switch_interval * 10),
-        pdTRUE, (void*)0, switchWifiChannel);
-    assert(WifiChanTimer);
-    xTimerStart(WifiChanTimer, 0);
+    TickType_t period = pdMS_TO_TICKS(wifi_channel_switch_interval * 10);
+    if (WifiChanTimer == NULL) {
+      WifiChanTimer = xTimerCreate("WifiChannelTimer", period, pdTRUE,
+                                   (void*)0, switchWifiChannel);
+      assert(WifiChanTimer);
+    }
+    // also starts the timer if it is dormant
+    if (xTimerChangePeriod(WifiChanTimer, period, pdMS_TO_TICKS(100)) != pdPASS) {
+      ESP_LOGW("libpax", "wifi channel timer start failed");
+    }
+  } else if (WifiChanTimer) {
+    xTimerStop(WifiChanTimer, pdMS_TO_TICKS(100));
   }
 
   initialized_wifi = 1;
@@ -155,12 +171,19 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
 void wifi_sniffer_stop() {
 #ifdef LIBPAX_WIFI
   if (initialized_wifi) {
-    if (WifiChanTimer) xTimerStop(WifiChanTimer, 0);
+    initialized_wifi = 0;  // makes a late channel timer callback a no-op
+    // kept for reuse by the next start
+    if (WifiChanTimer && xTimerStop(WifiChanTimer, pdMS_TO_TICKS(100)) != pdPASS) {
+      ESP_LOGW("libpax", "wifi channel timer stop failed");
+    }
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_noop_sniffer));
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode
+    // stop first so deinit can complete cleanly; the short delay lets the
+    // driver settle, otherwise deinit times out when stopping right after start
+    esp_wifi_stop();
+    vTaskDelay(pdMS_TO_TICKS(100));
     esp_wifi_deinit();
-    initialized_wifi = 0;
     // reset so the next start deterministically begins at the first
     // enabled channel, instead of resuming rotation where it left off
     channel = 0;

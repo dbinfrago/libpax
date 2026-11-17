@@ -45,6 +45,11 @@ static uint8_t hci_cmd_buf[128];
 static QueueHandle_t adv_queue;
 static TaskHandle_t hci_eventprocessor;
 
+// stop handshake: the task deletes itself so it never dies holding a lock
+static volatile bool hci_task_stop_requested = false;
+static volatile bool hci_task_exited = false;
+static const host_rcv_data_t hci_task_wakeup_item = {};
+
 // Count of advertising reports dropped because the queue was full, so the
 // queue size can be tuned based on real-world load instead of guessing.
 static volatile uint32_t ble_adv_dropped = 0;
@@ -83,10 +88,16 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len) {
     return ESP_FAIL;
   }
 
+  // drop late packets during stop, the queue is about to be deleted
+  QueueHandle_t queue = adv_queue;
+  if (queue == NULL || hci_task_stop_requested) {
+    return ESP_OK;
+  }
+
   memcpy(send_data.q_data, data, len);
   send_data.q_data_len = len;
   
-  if (xQueueSend(adv_queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
+  if (xQueueSend(queue, (void *)&send_data, (TickType_t)0) != pdTRUE) {
     ble_adv_dropped = ble_adv_dropped + 1;
     ESP_LOGD(TAG, "Failed to enqueue advertising report. Queue full.");
   }
@@ -154,6 +165,10 @@ void hci_evt_process(void *pvParameters) {
     if (xQueueReceive(adv_queue, &rcv_data_buffer, portMAX_DELAY) != pdPASS) {
       ESP_LOGE(TAG, "Queue receive error");
       continue;
+    }
+
+    if (hci_task_stop_requested) {
+      break;
     }
 
     queue_data = rcv_data_buffer.q_data;
@@ -240,7 +255,23 @@ void hci_evt_process(void *pvParameters) {
       }
     }
   }
+
+  hci_task_exited = true;
+  vTaskDelete(NULL);
 }
+
+#ifdef LIBPAX_BLE
+// undo controller start when scanner setup fails part way
+static void ble_controller_off(void) {
+#ifdef LIBPAX_ARDUINO
+  btStop();
+#endif
+#ifdef LIBPAX_ESPIDF
+  esp_bt_controller_disable();
+  esp_bt_controller_deinit();
+#endif
+}
+#endif
 
 void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
                     uint16_t blescaninterval) {
@@ -262,12 +293,23 @@ void start_BLE_scan(uint16_t blescantime, uint16_t blescanwindow,
     adv_queue = xQueueCreate(BLE_ADV_QUEUE_SIZE, sizeof(host_rcv_data_t));
     if (adv_queue == NULL) {
       ESP_LOGE(TAG, "Queue creation failed");
+      ble_controller_off();
       return;
     }
 
     /* start HCI event processor task with prio 1 */
-    xTaskCreate(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
-                &hci_eventprocessor);
+    hci_task_stop_requested = false;
+    hci_task_exited = false;
+    hci_eventprocessor = NULL;
+    if (xTaskCreate(&hci_evt_process, "hci_evt_process", 2048, NULL, 1,
+                    &hci_eventprocessor) != pdPASS) {
+      ESP_LOGE(TAG, "HCI event task creation failed");
+      hci_eventprocessor = NULL;
+      vQueueDelete(adv_queue);
+      adv_queue = NULL;
+      ble_controller_off();
+      return;
+    }
 
     esp_vhci_host_register_callback(&vhci_host_cb);
 
@@ -322,12 +364,34 @@ void stop_BLE_scan(void) {
   if (initialized_ble) {
     ESP_LOGI(TAG, "Shutting down bluetooth scanner ...");
 #ifdef LIBPAX_ARDUINO
-    btStop();  // disable bt_controller
+    if (!btStop()) {  // disable bt_controller
+      // controller may still deliver packets, so keep the queue alive
+      ESP_LOGE(TAG, "btStop failed, bluetooth scanner not stopped");
+      return;
+    }
 #endif
 #ifdef LIBPAX_ESPIDF
     ESP_ERROR_CHECK(esp_bt_controller_disable());
     ESP_ERROR_CHECK(esp_bt_controller_deinit());
 #endif
+    // controller is off, so nothing writes to the queue: stop task, free queue
+    if (hci_eventprocessor) {
+      hci_task_stop_requested = true;
+      if (xQueueSendToFront(adv_queue, &hci_task_wakeup_item,
+                            pdMS_TO_TICKS(100)) == pdTRUE) {
+        for (int i = 0; i < 100 && !hci_task_exited; i++) {
+          vTaskDelay(pdMS_TO_TICKS(10));
+        }
+      }
+    }
+    if (hci_eventprocessor && !hci_task_exited) {
+      // last resort: a leftover task would share buffers with the next start
+      ESP_LOGE(TAG, "hci_evt_process did not exit, deleting it");
+      vTaskDelete(hci_eventprocessor);
+    }
+    vQueueDelete(adv_queue);
+    hci_eventprocessor = NULL;
+    adv_queue = NULL;
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }

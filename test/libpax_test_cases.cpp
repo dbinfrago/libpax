@@ -237,6 +237,37 @@ void test_dual_start_with_ble() {
     TEST_ASSERT_EQUAL(0, err_code);
   }
 
+void restart_cycle() {
+  TEST_ASSERT_EQUAL(0, libpax_counter_init(process_count, &count_from_libpax, 1, 1));
+  TEST_ASSERT_EQUAL(0, libpax_counter_start());
+  TEST_ASSERT_EQUAL(0, libpax_counter_stop());
+  // let the idle task free deleted task memory
+  vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+void test_restart_no_heap_leak() {
+  struct libpax_config_t configuration;
+  libpax_default_config(&configuration);
+  configuration.blecounter = 1;
+  configuration.wificounter = 1;
+  configuration.wifi_channel_switch_interval = 50;
+  TEST_ASSERT_EQUAL(0, libpax_update_config(&configuration));
+
+  // first cycle warms up one-time driver allocations
+  restart_cycle();
+  size_t heap_before = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  UBaseType_t tasks_before = uxTaskGetNumberOfTasks();
+  for (int i = 0; i < 5; i++) {
+    restart_cycle();
+  }
+  size_t heap_after = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  printf("restart heap: before %u, after %u\n", (unsigned)heap_before,
+         (unsigned)heap_after);
+  TEST_ASSERT_EQUAL(tasks_before, uxTaskGetNumberOfTasks());
+  // the old BLE leak was about 18 KB per cycle
+  TEST_ASSERT_TRUE(heap_after + 2048 >= heap_before);
+}
+
 void test_no_unusual_reset() {
     const soc_reset_reason_t reason = esp_rom_get_reset_reason(0);
     TEST_ASSERT_MESSAGE(reason != RESET_REASON_CPU0_SW, "Should not be software reset (lib crash?)");
@@ -259,6 +290,7 @@ int run_tests() {
   RUN_TEST(test_config_store);
   RUN_TEST(test_dual_start_with_ble);
   RUN_TEST(test_integration);
+  RUN_TEST(test_restart_no_heap_leak);
 
   return UNITY_END();
 }
