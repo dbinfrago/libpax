@@ -19,34 +19,29 @@ limitations under the License.
 #include "globals.h"
 #include "libpax.h"
 
-typedef uint32_t bitmap_t;
+typedef uint8_t bitmap_t;
 enum { BITS_PER_WORD = sizeof(bitmap_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b) ((b) % BITS_PER_WORD)
 
 // The bitmap requires 2**16 = 65536 entries,
-// while using 32 bit integers, we need 65536 / 32 = 2048 integers
+// while using 8 bit integers, we need 65536 / 8 = 8192 integers
 // Separate maps per sniff type: a shared map would let a WiFi id and an
 // unrelated BLE id collide with each other, doubling the effective
 // collision rate whenever both radios are active at once.
 // Each map is only allocated when its sniffer is actually built in, so a
 // WiFi-only or BLE-only build doesn't waste 8 KiB of DRAM on the other map.
 #if defined(LIBPAX_WIFI)
-DRAM_ATTR bitmap_t seen_ids_map_wifi[2048];
+DRAM_ATTR bitmap_t seen_ids_map_wifi[8192];
 #endif
 #if defined(LIBPAX_BLE)
-DRAM_ATTR bitmap_t seen_ids_map_ble[2048];
+DRAM_ATTR bitmap_t seen_ids_map_ble[8192];
 #endif
 
-volatile uint16_t macs_wifi = 0;
-volatile uint16_t macs_ble = 0;
+std::atomic<uint16_t> macs_wifi = 0;
+std::atomic<uint16_t> macs_ble = 0;
 
 volatile uint8_t channel = 0;  // channel rotation counter
-
-// Guards the seen_ids maps: add_to_bucket() (WiFi/BLE RX task, either core)
-// sets individual bits while reset_bucket() (report timer task) memsets the
-// whole map, so without this a reset could race with a concurrent bit-set.
-static portMUX_TYPE bucket_mux = portMUX_INITIALIZER_UNLOCKED;
 
 /** remember given id in the bitmap for the given sniff type
  * returns 1 if id is new, 0 if already seen this is since last reset
@@ -64,29 +59,23 @@ static inline IRAM_ATTR int add_to_bucket(uint16_t id, snifftype_t sniff_type) {
   return 0;  // neither sniffer built in, nothing to track
 #endif
   uint16_t word_idx = WORD_OFFSET(id);
-  uint32_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
+  uint8_t bit_mask = ((bitmap_t)1 << BIT_OFFSET(id));
 
-  portENTER_CRITICAL(&bucket_mux);
-  bool already_seen = map[word_idx] & bit_mask;
-  if (!already_seen) {
-    map[word_idx] |= bit_mask;
-  }
-  portEXIT_CRITICAL(&bucket_mux);
+  bitmap_t previous = __atomic_fetch_or(&map[word_idx], bit_mask, __ATOMIC_RELAXED);
 
-  return already_seen ? 0 : 1;
+  return (previous & bit_mask) ? 0 : 1;
 }
 
 void reset_bucket() {
-  portENTER_CRITICAL(&bucket_mux);
   macs_wifi = 0;
   macs_ble = 0;
+
 #if defined(LIBPAX_WIFI)
   memset(seen_ids_map_wifi, 0, sizeof(seen_ids_map_wifi));
 #endif
 #if defined(LIBPAX_BLE)
   memset(seen_ids_map_ble, 0, sizeof(seen_ids_map_ble));
 #endif
-  portEXIT_CRITICAL(&bucket_mux);
 }
 
 int libpax_wifi_counter_count() { return macs_wifi; }
@@ -110,13 +99,12 @@ IRAM_ATTR int mac_add(uint8_t *paddr, snifftype_t sniff_type) {
   
   // Update appropriate counter based on type; guarded so a concurrent
   // reset_bucket() reset can't race with the increment
-  portENTER_CRITICAL(&bucket_mux);
+  
   if (sniff_type == MAC_SNIFF_BLE) {
-    macs_ble = macs_ble + 1;
+    ++macs_ble;
   } else if (sniff_type == MAC_SNIFF_WIFI) {
-    macs_wifi = macs_wifi + 1;
+    ++macs_wifi;
   }
-  portEXIT_CRITICAL(&bucket_mux);
   
   return 1;
 }
