@@ -233,6 +233,17 @@ void test_integration() {
   TEST_ASSERT_EQUAL(WIFI_PROMIS_FILTER_MASK_MGMT, running_filter.filter_mask);
   test_stop();
 
+  libpax_get_current_config(&gotConfiguration);
+  gotConfiguration.blecounter = 0;
+  gotConfiguration.wificounter = 1;
+  gotConfiguration.wifi_frame_filter_mode = 2;
+  libpax_update_config(&gotConfiguration);
+  err_code = libpax_counter_init(process_count, &count_from_libpax, 1, 1);
+  TEST_ASSERT_EQUAL(0, err_code);
+  test_callback();
+  esp_wifi_get_promiscuous_filter(&running_filter);
+  TEST_ASSERT_EQUAL(WIFI_PROMIS_FILTER_MASK_DATA, running_filter.filter_mask);
+  test_stop();
 }
 
 void test_dual_start_with_ble() {

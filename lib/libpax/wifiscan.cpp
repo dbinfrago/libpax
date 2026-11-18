@@ -137,6 +137,8 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval, uint8_t wifi_frame
   uint32_t filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA;
   if (wifi_frame_filter_mode == 1) {
     filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT;
+  } else if (wifi_frame_filter_mode == 2) {
+    filter_mask = WIFI_PROMIS_FILTER_MASK_DATA;
   }
 
   // filter management and data frames to the sniffer
