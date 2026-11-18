@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Protect start function from being executed when libpax is already started
 - Fix memory leak on stop: reuse report and WiFi channel timers, shut down BLE event task and free its queue (about 18 KB per restart with BLE)
 - Ignore timer callbacks that fire after stop, and undo BLE controller start when scanner setup fails
-- Added config option for only using management frames in wifi sniffer
+- Added config option for only using management or data frames in wifi sniffer
 
 ## [1.1.1] - 2025-09-21
 - Avoid an integer overflow in the pdMS_TO_TICKS macro. Use portTICK_PERIOD_MS as workaround instead
