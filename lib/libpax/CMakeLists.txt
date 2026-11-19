@@ -15,13 +15,11 @@ idf_component_register(SRCS ${app_sources}
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -O3
     -finline-functions
-    -flto
     -ffunction-sections
     -fdata-sections
 )
 
 # Link-time optimization
 target_link_options(${COMPONENT_LIB} PRIVATE
-    -flto
     -Wl,--gc-sections
 )
