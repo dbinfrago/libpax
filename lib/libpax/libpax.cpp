@@ -38,8 +38,8 @@ DRAM_ATTR bitmap_t seen_ids_map_wifi[8192];
 DRAM_ATTR bitmap_t seen_ids_map_ble[8192];
 #endif
 
-std::atomic<uint16_t> macs_wifi = 0;
-std::atomic<uint16_t> macs_ble = 0;
+std::atomic<uint16_t> macs_wifi = {0};
+std::atomic<uint16_t> macs_ble = {0};
 
 volatile uint8_t channel = 0;  // channel rotation counter
 
