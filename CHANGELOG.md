@@ -4,17 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-- Protect start function from being executed when libpax is already started
-- Fix memory leak on stop: reuse report and WiFi channel timers, shut down BLE event task and free its queue (about 18 KB per restart with BLE)
-- Ignore timer callbacks that fire after stop, and undo BLE controller start when scanner setup fails
-- Added config option for only using management or data frames in wifi sniffer
-
-## [2.0.0] - 2026-08-27
+## [2.0.0] - 2026-11-19
 - Rename WIFI_CHANNEL_* to LIBPAX_WIFI_CHANNEL_*
 - Perfomance optimizations
 - Resolve race-conditions
 - Update Espressiv framework to version 6.13.0
+- Protect start function from being executed when libpax is already started
+- Fix memory leak on stop: reuse report and WiFi channel timers, shut down BLE event task and free its queue (about 18 KB per restart with BLE)
+- Ignore timer callbacks that fire after stop, and undo BLE controller start when scanner setup fails
+- Added config option for only using management or data frames in wifi sniffer
 
 ## [1.1.1] - 2025-09-21
 - Avoid an integer overflow in the pdMS_TO_TICKS macro. Use portTICK_PERIOD_MS as workaround instead
